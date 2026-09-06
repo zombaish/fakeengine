@@ -18,6 +18,7 @@
             --accent-grab: #fbbf24;
             --accent-push: #a78bfa;
             --accent-delete: #f87171;
+            --accent-explode: #fb923c;
             --radius-lg: 20px;
             --radius-md: 14px;
         }
@@ -115,6 +116,7 @@
         .tool-btn[data-tool="grab"] { --tc: var(--accent-grab); }
         .tool-btn[data-tool="push"] { --tc: var(--accent-push); }
         .tool-btn[data-tool="delete"] { --tc: var(--accent-delete); }
+        .tool-btn[data-tool="explode"] { --tc: var(--accent-explode); }
         .tool-btn:hover:not(.active) { background: rgba(255,255,255,0.05); color: var(--text-primary); }
         .tool-btn:hover:not(.active) svg { color: var(--text-primary); }
         .tool-btn.active {
@@ -161,6 +163,17 @@
         }
         #action-btn svg { width: 28px; height: 28px; color: white; }
         #action-btn:active { transform: translateY(-50%) scale(0.92); }
+
+        #jump-btn {
+            position: absolute; top: calc(50% - 92px); right: 24px;
+            width: 52px; height: 52px; border-radius: 50%;
+            background: var(--bg-panel); border: 1.5px solid var(--border-soft); color: var(--text-primary);
+            display: flex; justify-content: center; align-items: center; pointer-events: auto;
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4); z-index: 6;
+        }
+        #jump-btn svg { width: 22px; height: 22px; }
+        #jump-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.12); }
 
         #instructions, #hud, #toolbar, #blocker { animation: fadeIn 0.5s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -358,6 +371,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
                 Delete
             </button>
+            <button class="tool-btn" data-tool="explode" aria-label="Explode">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3.2"/></svg>
+                Boom
+            </button>
             <button class="tool-btn" id="settings-btn" aria-label="Settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 Settings
@@ -375,6 +392,9 @@
                 <button id="fly-up-btn" class="fly-btn" aria-label="Fly up">▲</button>
                 <button id="fly-down-btn" class="fly-btn" aria-label="Fly down">▼</button>
             </div>
+            <button id="jump-btn" aria-label="Jump">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
             <div id="action-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
             </div>
@@ -519,7 +539,8 @@
             spawn:  { color: '#2dd4bf', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
             grab:   { color: '#fbbf24', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11.5V6a2 2 0 1 1 4 0v4.5M11 10.2V4.5a2 2 0 1 1 4 0V10M15 10V6.5a2 2 0 1 1 4 0V14c0 4-3 7-7 7h-1c-2.8 0-3.8-1-5.6-3.6l-1.7-2.5a1.7 1.7 0 0 1 2.7-2.1L7 12.8"/></svg>' },
             push:   { color: '#a78bfa', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>' },
-            delete: { color: '#f87171', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>' }
+            delete: { color: '#f87171', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>' },
+            explode: { color: '#fb923c', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3.2"/></svg>' }
         };
 
         // Grabbing state
@@ -883,10 +904,7 @@
                         break;
                     case 'Space':
                         keys.space = true;
-                        if (!settings.flight && canJump && (isPointerLocked || isMobile)) {
-                            playerBody.velocity.y = settings.jumpVel;
-                            canJump = false;
-                        }
+                        performJump();
                         if (isPointerLocked) e.preventDefault(); // stop space from scrolling the page
                         break;
                 }
@@ -995,6 +1013,12 @@
             actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleToolAction(true); });
             actionBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleToolAction(false); });
 
+            // Jump Button
+            document.getElementById('jump-btn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                performJump();
+            });
+
             // Fly up/down buttons (shown only while flight mode is on)
             const flyUpBtn = document.getElementById('fly-up-btn');
             const flyDownBtn = document.getElementById('fly-down-btn');
@@ -1028,6 +1052,13 @@
                     if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
                 });
             });
+        }
+
+        function performJump() {
+            if (!settings.flight && canJump && (isPointerLocked || isMobile)) {
+                playerBody.velocity.y = settings.jumpVel;
+                canJump = false;
+            }
         }
 
         function handleToolAction(isDown) {
@@ -1119,6 +1150,7 @@
                 vals.grabdist.textContent = settings.grabDistance.toFixed(1);
 
                 flyControls.classList.toggle('hidden', !(settings.flight && isMobile));
+                document.getElementById('jump-btn').classList.toggle('hidden', settings.flight);
             }
 
             els.flight.addEventListener('change', () => {
@@ -1239,6 +1271,30 @@
                         const hitPoint = new CANNON.Vec3(hit.point.x, hit.point.y, hit.point.z);
                         objData.body.applyImpulse(new CANNON.Vec3(impulseVec.x, impulseVec.y, impulseVec.z), hitPoint);
                     }
+                }
+            }
+            else if (currentTool === 'explode') {
+                // Radial shockwave centered a couple meters in front of the camera -
+                // everything nearby gets launched outward, closer objects fly further.
+                const origin = new THREE.Vector3(0, 0, -2).applyQuaternion(camera.quaternion).add(camera.position);
+                const radius = 12;
+
+                for (const obj of objectsToUpdate) {
+                    const bodyPos = obj.body.position;
+                    const dir = new THREE.Vector3(bodyPos.x - origin.x, bodyPos.y - origin.y, bodyPos.z - origin.z);
+                    const dist = dir.length();
+                    if (dist > radius || dist < 0.001) continue;
+
+                    dir.normalize();
+                    dir.y += 0.4; // slight upward kick for a nicer pop
+                    dir.normalize();
+
+                    const falloff = 1 - dist / radius; // stronger the closer the object is
+                    const strength = falloff * obj.body.mass * 20;
+                    obj.body.applyImpulse(
+                        new CANNON.Vec3(dir.x * strength, dir.y * strength, dir.z * strength),
+                        obj.body.position
+                    );
                 }
             }
         }
