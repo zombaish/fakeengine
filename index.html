@@ -19,6 +19,13 @@
             --accent-push: #a78bfa;
             --accent-delete: #f87171;
             --accent-explode: #fb923c;
+            --accent-freeze: #38bdf8;
+            --accent-vortex: #c084fc;
+            --accent-shrink: #f472b6;
+            --accent-grow: #4ade80;
+            --accent-rocket: #ef4444;
+            --accent-blackhole: #9089fc;
+            --accent-toolsmenu: #60a5fa;
             --radius-lg: 20px;
             --radius-md: 14px;
         }
@@ -117,6 +124,13 @@
         .tool-btn[data-tool="push"] { --tc: var(--accent-push); }
         .tool-btn[data-tool="delete"] { --tc: var(--accent-delete); }
         .tool-btn[data-tool="explode"] { --tc: var(--accent-explode); }
+        .tool-btn[data-tool="freeze"] { --tc: var(--accent-freeze); }
+        .tool-btn[data-tool="vortex"] { --tc: var(--accent-vortex); }
+        .tool-btn[data-tool="shrink"] { --tc: var(--accent-shrink); }
+        .tool-btn[data-tool="grow"] { --tc: var(--accent-grow); }
+        .tool-btn[data-tool="rocket"] { --tc: var(--accent-rocket); }
+        .tool-btn[data-tool="blackhole"] { --tc: var(--accent-blackhole); }
+        #tools-toggle-btn { --tc: var(--accent-toolsmenu); }
         .tool-btn:hover:not(.active) { background: rgba(255,255,255,0.05); color: var(--text-primary); }
         .tool-btn:hover:not(.active) svg { color: var(--text-primary); }
         .tool-btn.active {
@@ -125,6 +139,17 @@
             box-shadow: 0 0 18px color-mix(in srgb, var(--tc) 45%, transparent), inset 0 0 12px color-mix(in srgb, var(--tc) 10%, transparent);
         }
         .tool-btn.active svg { color: var(--tc); }
+
+        /* Secondary "special tools" bar - toggled by the Tools button, appears at top-center */
+        #tools-secondary {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: none; gap: 6px; pointer-events: auto; background: var(--bg-panel);
+            padding: 8px; border-radius: var(--radius-lg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-soft); box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            flex-wrap: wrap; justify-content: center; max-width: min(560px, calc(100vw - 24px));
+        }
+        #tools-secondary.visible { display: flex; animation: fadeInDown 0.22s ease; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
         /* Mobile Controls */
         .mobile-controls { display: none; pointer-events: auto; }
@@ -135,6 +160,7 @@
             .tool-btn { padding: 7px 9px; min-width: 58px; font-size: 10px; gap: 3px; }
             .tool-btn svg { width: 17px; height: 17px; }
             #hud { top: 14px; right: 14px; padding: 6px 12px; font-size: 12px; }
+            #tools-secondary { top: 14px; gap: 2px; padding: 6px; max-width: calc(100vw - 16px); }
         }
 
         .joystick-zone {
@@ -351,7 +377,35 @@
             <div class="row"><kbd>space</kbd> jump</div>
             <div class="row">mouse to look around</div>
             <div class="row"><kbd>click</kbd> use active tool</div>
+            <div class="row"><kbd>T</kbd> more tools</div>
             <div class="esc-hint">Press <kbd>ESC</kbd> to unlock mouse</div>
+        </div>
+
+        <div id="tools-secondary">
+            <button class="tool-btn" data-tool="freeze" aria-label="Freeze Ray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4 7l16 10M20 7 4 17"/></svg>
+                Freeze
+            </button>
+            <button class="tool-btn" data-tool="vortex" aria-label="Vortex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.5-7.1"/><circle cx="12" cy="12" r="2"/></svg>
+                Vortex
+            </button>
+            <button class="tool-btn" data-tool="shrink" aria-label="Shrink Ray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v6h6M9 21v-6H3M21 3l-7 7M3 21l7-7"/></svg>
+                Shrink
+            </button>
+            <button class="tool-btn" data-tool="grow" aria-label="Grow Ray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>
+                Grow
+            </button>
+            <button class="tool-btn" data-tool="rocket" aria-label="Rocket Launcher">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 5 6 5 10 0 2.5-1.2 4.5-2.5 6l-1-2.5h-3L9.5 18C8.2 16.5 7 14.5 7 12c0-4 2-8 5-10Z"/><path d="M9 17c-2 .3-3 1.5-3 4 2.5 0 3.7-1 4-3M15 17c2 .3 3 1.5 3 4-2.5 0-3.7-1-4-3"/><circle cx="12" cy="10" r="1.6"/></svg>
+                Rocket
+            </button>
+            <button class="tool-btn" data-tool="blackhole" aria-label="Black Hole">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+                B.Hole
+            </button>
         </div>
 
         <div id="toolbar">
@@ -374,6 +428,10 @@
             <button class="tool-btn" data-tool="explode" aria-label="Explode">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3.2"/></svg>
                 Boom
+            </button>
+            <button class="tool-btn" id="tools-toggle-btn" aria-label="More Tools">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                Tools
             </button>
             <button class="tool-btn" id="settings-btn" aria-label="Settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -540,13 +598,26 @@
             grab:   { color: '#fbbf24', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11.5V6a2 2 0 1 1 4 0v4.5M11 10.2V4.5a2 2 0 1 1 4 0V10M15 10V6.5a2 2 0 1 1 4 0V14c0 4-3 7-7 7h-1c-2.8 0-3.8-1-5.6-3.6l-1.7-2.5a1.7 1.7 0 0 1 2.7-2.1L7 12.8"/></svg>' },
             push:   { color: '#a78bfa', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>' },
             delete: { color: '#f87171', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>' },
-            explode: { color: '#fb923c', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3.2"/></svg>' }
+            explode: { color: '#fb923c', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3.2"/></svg>' },
+            freeze: { color: '#38bdf8', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4 7l16 10M20 7 4 17"/></svg>' },
+            vortex: { color: '#c084fc', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.5-7.1"/><circle cx="12" cy="12" r="2"/></svg>' },
+            shrink: { color: '#f472b6', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v6h6M9 21v-6H3M21 3l-7 7M3 21l7-7"/></svg>' },
+            grow: { color: '#4ade80', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>' },
+            rocket: { color: '#ef4444', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 5 6 5 10 0 2.5-1.2 4.5-2.5 6l-1-2.5h-3L9.5 18C8.2 16.5 7 14.5 7 12c0-4 2-8 5-10Z"/><path d="M9 17c-2 .3-3 1.5-3 4 2.5 0 3.7-1 4-3M15 17c2 .3 3 1.5 3 4-2.5 0-3.7-1-4-3"/><circle cx="12" cy="10" r="1.6"/></svg>' },
+            blackhole: { color: '#9089fc', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>' }
         };
 
         // Grabbing state
         let grabConstraint = null;
         let kinematicGrabBody = null;
         let isGrabbing = false;
+
+        // --- NEW TOOL STATE ---
+        let isVortexActive = false; // Vortex pulls while held
+        const frozenBodies = new Map(); // Cannon body -> saved emissive info, for the Freeze Ray
+        const rockets = []; // active Rocket Launcher projectiles
+        const blackHoles = []; // active Black Hole vortices
+        const MAX_BLACK_HOLES = 3;
 
         // "Poof" star effect for objects that fly out past render distance
         let starTexture = null;
@@ -802,27 +873,16 @@
             if (el) el.textContent = objectsToUpdate.length;
         }
 
-        // --- RANDOM SHAPE GENERATOR ---
-        function spawnRandomShape(x, y, z) {
-            const types = ['box', 'sphere', 'cylinder'];
-            const type = types[Math.floor(Math.random() * types.length)];
-
-            const color = new THREE.Color().setHSL(Math.random(), 0.65, 0.55);
-
-            // Vary the material finish so the scene doesn't look uniformly plastic:
-            // matte, glossy plastic, or brushed metal.
-            const finishRoll = Math.random();
-            let roughness, metalness;
-            if (finishRoll < 0.4) { roughness = 0.85; metalness = 0.0; }       // matte
-            else if (finishRoll < 0.75) { roughness = 0.2; metalness = 0.05; } // glossy plastic
-            else { roughness = 0.35; metalness = 0.85; }                       // metal
-
+        // --- SHAPE GENERATOR ---
+        // Builds a physics object of a given type/size/color and registers it. Shared by
+        // spawnRandomShape() and the Shrink/Grow Ray tools (which rebuild an object at a new size).
+        function createPhysicsObject(type, size, x, y, z, colorHex, roughness, metalness) {
             const material = new THREE.MeshStandardMaterial({
-                color: color, roughness: roughness, metalness: metalness
+                color: colorHex, roughness: roughness, metalness: metalness
             });
 
             let mesh, shape, mass;
-            const size = Math.random() * 1.5 + 0.5;
+            const physMaterial = world.contactmaterials[0].materials[0];
 
             if (type === 'box') {
                 mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), material);
@@ -835,37 +895,57 @@
             } else { // cylinder
                 mesh = new THREE.Mesh(new THREE.CylinderGeometry(size / 2, size / 2, size, 32), material);
                 shape = new CANNON.Cylinder(size / 2, size / 2, size, 32);
-                // Rotate cylinder to match Cannon's orientation
-                const q = new CANNON.Quaternion();
-                q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-                const transform = new CANNON.Transform();
-                transform.quaternion.copy(q);
-                // In modern cannon-es, cylinder z-axis is up. Threejs y-axis is up.
-                // We add shape with a quaternion offset.
-                const physMaterial = world.contactmaterials[0].materials[0]; // Get default mat
                 mass = size * 5;
-
-                const body = new CANNON.Body({ mass, position: new CANNON.Vec3(x, y, z), material: physMaterial });
-                body.addShape(shape, new CANNON.Vec3(0, 0, 0), q);
-
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                scene.add(mesh);
-                world.addBody(body);
-                objectsToUpdate.push({ mesh, body });
-                updateHudCount();
-                return;
             }
 
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             scene.add(mesh);
 
-            const physMaterial = world.contactmaterials[0].materials[0];
-            const body = new CANNON.Body({ mass, shape, position: new CANNON.Vec3(x, y, z), material: physMaterial });
+            const body = new CANNON.Body({ mass, position: new CANNON.Vec3(x, y, z), material: physMaterial });
+            if (type === 'cylinder') {
+                // Rotate cylinder to match Cannon's orientation (cylinder z-axis is up in
+                // cannon-es, Three.js y-axis is up, so we add the shape with a quaternion offset).
+                const q = new CANNON.Quaternion();
+                q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                body.addShape(shape, new CANNON.Vec3(0, 0, 0), q);
+            } else {
+                body.addShape(shape);
+            }
             world.addBody(body);
 
-            objectsToUpdate.push({ mesh, body });
+            const objData = { mesh, body, type, size, colorHex, roughness, metalness };
+            objectsToUpdate.push(objData);
+            updateHudCount();
+            return objData;
+        }
+
+        function spawnRandomShape(x, y, z) {
+            const types = ['box', 'sphere', 'cylinder'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const color = new THREE.Color().setHSL(Math.random(), 0.65, 0.55);
+
+            // Vary the material finish so the scene doesn't look uniformly plastic:
+            // matte, glossy plastic, or brushed metal.
+            const finishRoll = Math.random();
+            let roughness, metalness;
+            if (finishRoll < 0.4) { roughness = 0.85; metalness = 0.0; }       // matte
+            else if (finishRoll < 0.75) { roughness = 0.2; metalness = 0.05; } // glossy plastic
+            else { roughness = 0.35; metalness = 0.85; }                       // metal
+
+            const size = Math.random() * 1.5 + 0.5;
+            return createPhysicsObject(type, size, x, y, z, color.getHex(), roughness, metalness);
+        }
+
+        // Removes a physics object cleanly, keeping the HUD count and any tool state in sync.
+        function removeObject(objData) {
+            scene.remove(objData.mesh);
+            objData.mesh.geometry.dispose();
+            objData.mesh.material.dispose();
+            world.removeBody(objData.body);
+            const idx = objectsToUpdate.indexOf(objData);
+            if (idx !== -1) objectsToUpdate.splice(idx, 1);
+            frozenBodies.delete(objData.body);
             updateHudCount();
         }
 
@@ -926,6 +1006,9 @@
                         keys.space = true;
                         performJump();
                         if (isPointerLocked) e.preventDefault(); // stop space from scrolling the page
+                        break;
+                    case 'KeyT':
+                        toggleToolsPanel();
                         break;
                 }
             });
@@ -1053,6 +1136,8 @@
 
         // --- TOOL UI & LOGIC ---
         function setupUI() {
+            // Every tool button carries data-tool, whether it lives in the bottom bar or the
+            // secondary "more tools" bar at the top - so one shared handler covers both.
             const btns = document.querySelectorAll('.tool-btn[data-tool]');
             btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -1067,11 +1152,28 @@
                     currentTool = btn.dataset.tool;
                     setToolVisuals(currentTool);
                     releaseGrab(); // Ensure we don't hold something when switching tools
+                    isVortexActive = false;
 
                     // Focus back to game on desktop
                     if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
                 });
             });
+
+            // "Tools" button reveals/hides the row of special tools at the top of the screen
+            const toolsToggleBtn = document.getElementById('tools-toggle-btn');
+            toolsToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleToolsPanel();
+            });
+        }
+
+        function toggleToolsPanel(forceOpen) {
+            const panel = document.getElementById('tools-secondary');
+            const toggleBtn = document.getElementById('tools-toggle-btn');
+            const shouldShow = forceOpen !== undefined ? forceOpen : !panel.classList.contains('visible');
+            panel.classList.toggle('visible', shouldShow);
+            toggleBtn.classList.toggle('active', shouldShow);
+            if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
         }
 
         function performJump() {
@@ -1088,6 +1190,9 @@
                     if (isGrabbing) releaseGrab();
                     else tryGrab();
                 }
+            } else if (currentTool === 'vortex') {
+                // Vortex pulls continuously while held, and flings everything on release.
+                isVortexActive = isDown;
             } else if (isDown) {
                 // One-click tools
                 executeOneClickTool();
@@ -1234,6 +1339,14 @@
                     world.removeBody(obj.body);
                 }
                 objectsToUpdate.length = 0;
+                frozenBodies.clear();
+                for (const r of rockets) { scene.remove(r.mesh); world.removeBody(r.body); }
+                rockets.length = 0;
+                for (const bh of blackHoles) {
+                    scene.remove(bh.core); bh.core.geometry.dispose(); bh.core.material.dispose();
+                    scene.remove(bh.ring); bh.ring.geometry.dispose(); bh.ring.material.dispose();
+                }
+                blackHoles.length = 0;
                 updateHudCount();
             });
 
@@ -1270,12 +1383,7 @@
                 const hit = getLookingAt();
                 if (hit) {
                     const objData = objectsToUpdate.find(o => o.mesh === hit.object);
-                    if (objData) {
-                        scene.remove(objData.mesh);
-                        world.removeBody(objData.body);
-                        objectsToUpdate.splice(objectsToUpdate.indexOf(objData), 1);
-                        updateHudCount();
-                    }
+                    if (objData) removeObject(objData);
                 }
             }
             else if (currentTool === 'push') {
@@ -1315,6 +1423,243 @@
                         new CANNON.Vec3(dir.x * strength, dir.y * strength, dir.z * strength),
                         obj.body.position
                     );
+                }
+            }
+            else if (currentTool === 'freeze') {
+                const hit = getLookingAt();
+                if (hit) {
+                    const objData = objectsToUpdate.find(o => o.mesh === hit.object);
+                    if (objData) toggleFreeze(objData);
+                }
+            }
+            else if (currentTool === 'shrink') {
+                const hit = getLookingAt();
+                if (hit) {
+                    const objData = objectsToUpdate.find(o => o.mesh === hit.object);
+                    if (objData && !frozenBodies.has(objData.body)) resizeObject(objData, 0.72);
+                }
+            }
+            else if (currentTool === 'grow') {
+                const hit = getLookingAt();
+                if (hit) {
+                    const objData = objectsToUpdate.find(o => o.mesh === hit.object);
+                    if (objData && !frozenBodies.has(objData.body)) resizeObject(objData, 1.35);
+                }
+            }
+            else if (currentTool === 'rocket') {
+                fireRocket();
+            }
+            else if (currentTool === 'blackhole') {
+                spawnBlackHole();
+            }
+        }
+
+        // --- FREEZE RAY: toggles an object between frozen (locked in place, icy tint) and normal ---
+        function toggleFreeze(objData) {
+            const body = objData.body;
+            const mat = objData.mesh.material;
+            if (frozenBodies.has(body)) {
+                const saved = frozenBodies.get(body);
+                mat.emissive.setHex(saved.hex);
+                mat.emissiveIntensity = saved.intensity;
+                frozenBodies.delete(body);
+            } else {
+                frozenBodies.set(body, { hex: mat.emissive.getHex(), intensity: mat.emissiveIntensity });
+                mat.emissive.setHex(0x38bdf8);
+                mat.emissiveIntensity = 0.6;
+                body.velocity.set(0, 0, 0);
+                body.angularVelocity.set(0, 0, 0);
+            }
+        }
+
+        // --- SHRINK / GROW RAY: rebuilds the target object at a new size, preserving
+        // its position, rotation, and momentum. Tiny objects poof away entirely. ---
+        function resizeObject(objData, factor) {
+            const newSize = objData.size * factor;
+
+            const pos = objData.body.position;
+            const spawnPos = new THREE.Vector3(pos.x, pos.y, pos.z);
+
+            if (newSize < 0.28) {
+                spawnPoofStar(objData.mesh.position);
+                removeObject(objData);
+                return;
+            }
+
+            const clampedSize = Math.min(newSize, 6);
+            const vel = objData.body.velocity;
+            const angVel = objData.body.angularVelocity;
+            const quat = objData.body.quaternion;
+            const savedVel = new CANNON.Vec3(vel.x, vel.y, vel.z);
+            const savedAngVel = new CANNON.Vec3(angVel.x, angVel.y, angVel.z);
+            const savedQuat = new CANNON.Quaternion(quat.x, quat.y, quat.z, quat.w);
+
+            removeObject(objData);
+            const newObj = createPhysicsObject(
+                objData.type, clampedSize, spawnPos.x, spawnPos.y, spawnPos.z,
+                objData.colorHex, objData.roughness, objData.metalness
+            );
+            newObj.body.velocity.copy(savedVel);
+            newObj.body.angularVelocity.copy(savedAngVel);
+            newObj.body.quaternion.copy(savedQuat);
+        }
+
+        // --- VORTEX: while held, pulls + swirls nearby objects toward a point in front of the camera ---
+        function updateVortex() {
+            if (!isVortexActive) return;
+            const origin = new THREE.Vector3(0, 0, -6).applyQuaternion(camera.quaternion).add(camera.position);
+            const radius = 14;
+
+            for (const obj of objectsToUpdate) {
+                if (frozenBodies.has(obj.body)) continue;
+                const bodyPos = obj.body.position;
+                const toCenter = new THREE.Vector3(origin.x - bodyPos.x, origin.y - bodyPos.y, origin.z - bodyPos.z);
+                const dist = toCenter.length();
+                if (dist > radius || dist < 0.6) continue;
+
+                toCenter.normalize();
+                const pull = (1 - dist / radius) * obj.body.mass * 26;
+                const tangent = new THREE.Vector3().crossVectors(toCenter, new THREE.Vector3(0, 1, 0)).normalize();
+                const swirl = pull * 0.65;
+
+                obj.body.applyForce(new CANNON.Vec3(
+                    toCenter.x * pull + tangent.x * swirl,
+                    toCenter.y * pull + tangent.y * swirl + 1.5,
+                    toCenter.z * pull + tangent.z * swirl
+                ), obj.body.position);
+            }
+        }
+
+        // --- ROCKET LAUNCHER: fires a projectile that detonates in a shockwave on impact ---
+        function fireRocket() {
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+            const startPos = new THREE.Vector3(0, 0, -1.5).applyQuaternion(camera.quaternion).add(camera.position);
+
+            const mesh = new THREE.Mesh(
+                new THREE.ConeGeometry(0.18, 0.55, 12),
+                new THREE.MeshStandardMaterial({ color: 0xff5533, emissive: 0xff2200, emissiveIntensity: 0.7, roughness: 0.3, metalness: 0.5 })
+            );
+            mesh.castShadow = true;
+            mesh.position.copy(startPos);
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+            scene.add(mesh);
+
+            const shape = new CANNON.Sphere(0.22);
+            const body = new CANNON.Body({ mass: 1, shape, position: new CANNON.Vec3(startPos.x, startPos.y, startPos.z) });
+            const speed = 38;
+            body.velocity.set(dir.x * speed, dir.y * speed, dir.z * speed);
+            world.addBody(body);
+
+            const rocket = { mesh, body, age: 0, pendingDetonate: false, detonated: false };
+            rockets.push(rocket);
+            body.addEventListener('collide', () => { rocket.pendingDetonate = true; });
+        }
+
+        function updateRockets(dt) {
+            for (let i = rockets.length - 1; i >= 0; i--) {
+                const r = rockets[i];
+                r.age += dt;
+                r.mesh.position.copy(r.body.position);
+                const vel = r.body.velocity;
+                if (vel.length() > 0.5) {
+                    const dir = new THREE.Vector3(vel.x, vel.y, vel.z).normalize();
+                    r.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                }
+                const horizDist = Math.sqrt(r.body.position.x ** 2 + r.body.position.z ** 2);
+                if (r.pendingDetonate || r.age > 4 || horizDist > RENDER_DISTANCE) {
+                    detonateRocket(r);
+                }
+            }
+        }
+
+        function detonateRocket(rocket) {
+            if (rocket.detonated) return;
+            rocket.detonated = true;
+            const origin = rocket.mesh.position.clone();
+            const radius = 9;
+
+            for (const obj of objectsToUpdate) {
+                if (frozenBodies.has(obj.body)) continue;
+                const bodyPos = obj.body.position;
+                const dir = new THREE.Vector3(bodyPos.x - origin.x, bodyPos.y - origin.y, bodyPos.z - origin.z);
+                const dist = dir.length();
+                if (dist > radius || dist < 0.001) continue;
+                dir.normalize();
+                dir.y += 0.35;
+                dir.normalize();
+                const falloff = 1 - dist / radius;
+                const strength = falloff * obj.body.mass * 26;
+                obj.body.applyImpulse(new CANNON.Vec3(dir.x * strength, dir.y * strength, dir.z * strength), obj.body.position);
+            }
+
+            spawnPoofStar(origin);
+            scene.remove(rocket.mesh);
+            rocket.mesh.geometry.dispose();
+            rocket.mesh.material.dispose();
+            world.removeBody(rocket.body);
+            const idx = rockets.indexOf(rocket);
+            if (idx !== -1) rockets.splice(idx, 1);
+        }
+
+        // --- BLACK HOLE: spawns a short-lived vortex that eats nearby objects, then implodes ---
+        function spawnBlackHole() {
+            if (blackHoles.length >= MAX_BLACK_HOLES) return;
+
+            const origin = new THREE.Vector3(0, 0, -7).applyQuaternion(camera.quaternion).add(camera.position);
+            if (origin.y < 1.5) origin.y = 1.5;
+
+            const core = new THREE.Mesh(
+                new THREE.SphereGeometry(0.9, 24, 24),
+                new THREE.MeshBasicMaterial({ color: 0x0a0612 })
+            );
+            core.position.copy(origin);
+            scene.add(core);
+
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(1.1, 1.5, 48),
+                new THREE.MeshBasicMaterial({ color: 0x9089fc, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+            );
+            ring.position.copy(origin);
+            scene.add(ring);
+
+            blackHoles.push({ core, ring, origin, age: 0, life: 3.2, radius: 15, horizon: 1.3 });
+        }
+
+        function updateBlackHoles(dt) {
+            for (let i = blackHoles.length - 1; i >= 0; i--) {
+                const bh = blackHoles[i];
+                bh.age += dt;
+                bh.core.rotation.y += dt * 2;
+                bh.ring.rotation.z += dt * 3;
+                const t = bh.age / bh.life;
+                bh.core.scale.setScalar(1 + Math.sin(bh.age * 10) * 0.04);
+                bh.ring.scale.setScalar(1 + t * 0.3);
+                bh.ring.material.opacity = 0.75 * (1 - t);
+
+                for (let j = objectsToUpdate.length - 1; j >= 0; j--) {
+                    const obj = objectsToUpdate[j];
+                    if (frozenBodies.has(obj.body)) continue;
+                    const bodyPos = obj.body.position;
+                    const dir = new THREE.Vector3(bh.origin.x - bodyPos.x, bh.origin.y - bodyPos.y, bh.origin.z - bodyPos.z);
+                    const dist = dir.length();
+                    if (dist > bh.radius) continue;
+
+                    if (dist < bh.horizon) {
+                        spawnPoofStar(obj.mesh.position);
+                        removeObject(obj);
+                        continue;
+                    }
+
+                    dir.normalize();
+                    const pull = (1 - dist / bh.radius) * obj.body.mass * 34;
+                    obj.body.applyForce(new CANNON.Vec3(dir.x * pull, dir.y * pull, dir.z * pull), obj.body.position);
+                }
+
+                if (bh.age >= bh.life) {
+                    scene.remove(bh.core); bh.core.geometry.dispose(); bh.core.material.dispose();
+                    scene.remove(bh.ring); bh.ring.geometry.dispose(); bh.ring.material.dispose();
+                    spawnPoofStar(bh.origin);
+                    blackHoles.splice(i, 1);
                 }
             }
         }
@@ -1540,6 +1885,17 @@
 
                 // Update grab tool
                 updateGrabPosition();
+
+                // Update the new special tools
+                updateVortex();
+                updateRockets(dt);
+                updateBlackHoles(dt);
+
+                // Keep frozen objects locked in place
+                for (const [body] of frozenBodies) {
+                    body.velocity.set(0, 0, 0);
+                    body.angularVelocity.set(0, 0, 0);
+                }
 
                 // Sync Three.js meshes with Cannon.js bodies
                 for (const obj of objectsToUpdate) {
