@@ -129,18 +129,22 @@
         @media (hover: none) and (pointer: coarse) {
             .mobile-controls { display: block; }
             #instructions { display: none !important; }
+            #toolbar { bottom: 14px; gap: 2px; padding: 6px; }
+            .tool-btn { padding: 7px 9px; min-width: 58px; font-size: 10px; gap: 3px; }
+            .tool-btn svg { width: 17px; height: 17px; }
+            #hud { top: 14px; right: 14px; padding: 6px 12px; font-size: 12px; }
         }
 
         .joystick-zone {
-            position: absolute; bottom: 92px; width: 130px; height: 130px; border-radius: 50%;
+            position: absolute; bottom: 112px; width: 110px; height: 110px; border-radius: 50%;
             background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
             border: 1px solid var(--border-soft); touch-action: none;
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
         }
-        #move-zone { left: 24px; }
-        #look-zone { right: 24px; }
+        #move-zone { left: 16px; }
+        #look-zone { right: 16px; }
         .joystick-knob {
-            position: absolute; top: 50%; left: 50%; width: 52px; height: 52px; border-radius: 50%;
+            position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; border-radius: 50%;
             background: linear-gradient(160deg, rgba(255,255,255,0.95), rgba(220,224,232,0.75));
             transform: translate(-50%, -50%); pointer-events: none;
             box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.8);
@@ -148,8 +152,8 @@
         }
 
         #action-btn {
-            position: absolute; top: 50%; right: 24px; transform: translateY(-50%);
-            width: 74px; height: 74px; border-radius: 50%;
+            position: absolute; top: 50%; right: 16px; transform: translateY(-50%);
+            width: 64px; height: 64px; border-radius: 50%;
             background: color-mix(in srgb, var(--tc, var(--accent-spawn)) 30%, rgba(10,12,16,0.55));
             border: 2px solid var(--tc, var(--accent-spawn)); color: white;
             display: flex; justify-content: center; align-items: center; pointer-events: auto;
@@ -341,7 +345,7 @@
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
 
-            const horizonColor = 0xcfe8f5;
+            const horizonColor = 0x1b2338;
             scene.fog = new THREE.Fog(horizonColor, 25, 110);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -352,7 +356,7 @@
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.05;
+            renderer.toneMappingExposure = 0.95;
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             container.appendChild(renderer.domElement);
 
@@ -360,7 +364,7 @@
             const skyGeo = new THREE.SphereGeometry(300, 32, 16);
             const skyMat = new THREE.ShaderMaterial({
                 uniforms: {
-                    topColor: { value: new THREE.Color(0x3a7bd5) },
+                    topColor: { value: new THREE.Color(0x03050a) },
                     bottomColor: { value: new THREE.Color(horizonColor) },
                     offset: { value: 15 },
                     exponent: { value: 0.55 }
@@ -394,18 +398,18 @@
             const pmremGenerator = new THREE.PMREMGenerator(renderer);
             pmremGenerator.compileEquirectangularShader();
             const envScene = new THREE.Scene();
-            envScene.background = new THREE.Color(0xdfeaf2);
-            const envLightA = new THREE.Mesh(new THREE.SphereGeometry(60, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide }));
+            envScene.background = new THREE.Color(0x11141c);
+            const envLightA = new THREE.Mesh(new THREE.SphereGeometry(60, 8, 8), new THREE.MeshBasicMaterial({ color: 0x8f9bbd, side: THREE.BackSide }));
             envScene.add(envLightA);
             const envTexture = pmremGenerator.fromScene(envScene, 0.06).texture;
             scene.environment = envTexture;
             pmremGenerator.dispose();
 
             // --- Lighting (hemisphere fill + warm directional sun) ---
-            const hemiLight = new THREE.HemisphereLight(0x9fc9ff, 0x4a4d3f, 1.15);
+            const hemiLight = new THREE.HemisphereLight(0x33436b, 0x0c0d10, 0.9);
             scene.add(hemiLight);
 
-            const dirLight = new THREE.DirectionalLight(0xfff2df, 2.6);
+            const dirLight = new THREE.DirectionalLight(0xcdd8ff, 1.7);
             dirLight.position.set(30, 45, 15);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
@@ -454,8 +458,8 @@
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
-            const lightTile = '#eef0f0';
-            const darkTile = '#c7ccd4';
+            const lightTile = '#3c4048';
+            const darkTile = '#26282e';
             ctx.fillStyle = lightTile; ctx.fillRect(0, 0, 512, 512);
             ctx.fillStyle = darkTile;
             for (let i = 0; i < 8; i++) {
