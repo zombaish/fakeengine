@@ -142,7 +142,6 @@
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
         }
         #move-zone { left: 16px; }
-        #look-zone { right: 16px; }
         .joystick-knob {
             position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; border-radius: 50%;
             background: linear-gradient(160deg, rgba(255,255,255,0.95), rgba(220,224,232,0.75));
@@ -202,6 +201,104 @@
             font-size: 11px; font-weight: 600; color: var(--text-primary);
         }
         .hidden { display: none !important; }
+
+        /* Look layer - full-screen mobile look-around drag surface */
+        #look-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2; display: none; touch-action: none;
+        }
+        @media (hover: none) and (pointer: coarse) {
+            #look-layer { display: block; pointer-events: auto; }
+        }
+        .joystick-zone, #action-btn, #toolbar, #fly-controls { z-index: 6; }
+        #settings-panel { z-index: 30; } /* above #blocker (20) so it stays usable if pointer lock exits while open */
+
+        /* Fly (up/down) buttons - shown only in flight mode on mobile */
+        #fly-controls {
+            position: absolute; bottom: 232px; left: 34px; display: flex;
+            flex-direction: column; gap: 8px; pointer-events: auto;
+        }
+        .fly-btn {
+            width: 46px; height: 46px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 16px;
+            background: var(--bg-panel); border: 1px solid var(--border-soft);
+            color: var(--text-primary); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35); user-select: none; -webkit-user-select: none;
+        }
+        .fly-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.12); }
+
+        /* Settings button + panel */
+        #settings-panel {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(5,6,9,0.55); pointer-events: auto;
+        }
+        .settings-card {
+            width: 340px; max-width: calc(100vw - 32px); max-height: calc(100vh - 64px);
+            overflow-y: auto; touch-action: pan-y; background: var(--bg-panel-solid); border: 1px solid var(--border-soft);
+            border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            color: var(--text-primary); font-family: 'Inter', sans-serif;
+        }
+        .settings-header {
+            position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px; border-bottom: 1px solid var(--border-soft);
+            background: var(--bg-panel-solid); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+        .settings-header h2 {
+            margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600;
+        }
+        #settings-close {
+            background: rgba(255,255,255,0.08); border: 1px solid var(--border-soft); color: var(--text-primary);
+            width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 1;
+        }
+        .settings-body { padding: 8px 20px 20px 20px; }
+        .settings-section-label {
+            font-family: 'Space Grotesk', sans-serif; font-size: 11.5px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary);
+            margin: 18px 0 8px 0;
+        }
+        .settings-row {
+            display: flex; flex-direction: column; gap: 6px; margin: 14px 0; font-size: 13px;
+        }
+        .settings-row .row-label {
+            display: flex; align-items: center; justify-content: space-between; color: var(--text-secondary);
+        }
+        .settings-row .row-label span.val { color: var(--text-primary); font-weight: 600; font-family: 'Space Grotesk', sans-serif; }
+        .settings-row input[type="range"] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 999px;
+            background: rgba(255,255,255,0.12); outline: none; cursor: pointer;
+        }
+        .settings-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+            background: var(--accent-spawn); box-shadow: 0 0 8px color-mix(in srgb, var(--accent-spawn) 60%, transparent);
+            cursor: pointer;
+        }
+        .settings-row input[type="range"]::-moz-range-thumb {
+            width: 16px; height: 16px; border-radius: 50%; border: none;
+            background: var(--accent-spawn); cursor: pointer;
+        }
+        .toggle-row { flex-direction: row; align-items: center; justify-content: space-between; }
+        .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch .slider-track {
+            position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.14);
+            border-radius: 999px; transition: 0.2s;
+        }
+        .switch .slider-track::before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background: white; border-radius: 50%; transition: 0.2s;
+        }
+        .switch input:checked + .slider-track { background: var(--accent-spawn); }
+        .switch input:checked + .slider-track::before { transform: translateX(18px); }
+        .preset-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .preset-btn, .settings-btn-full {
+            background: rgba(255,255,255,0.06); border: 1px solid var(--border-soft); color: var(--text-primary);
+            border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: all 0.15s ease;
+        }
+        .preset-btn:hover, .settings-btn-full:hover { background: rgba(255,255,255,0.12); }
+        .settings-btn-full { width: 100%; padding: 10px; border-radius: var(--radius-md); text-align: center; margin-top: 6px; }
+        .settings-btn-full.danger { border-color: color-mix(in srgb, var(--accent-delete) 50%, transparent); color: var(--accent-delete); }
     </style>
     <!-- Import Maps for Three.js and Cannon-es -->
     <script type="importmap">
@@ -261,14 +358,98 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
                 Delete
             </button>
+            <button class="tool-btn" id="settings-btn" aria-label="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Settings
+            </button>
         </div>
+
+        <!-- Full-screen drag-to-look surface (mobile). Sits under the joystick/buttons so
+             those still take priority, but everywhere else on screen now controls the camera. -->
+        <div id="look-layer"></div>
 
         <!-- Mobile specific controls -->
         <div class="mobile-controls">
             <div id="move-zone" class="joystick-zone"><div class="joystick-knob" id="move-knob"></div></div>
-            <div id="look-zone" class="joystick-zone"><div class="joystick-knob" id="look-knob"></div></div>
+            <div id="fly-controls" class="hidden">
+                <button id="fly-up-btn" class="fly-btn" aria-label="Fly up">▲</button>
+                <button id="fly-down-btn" class="fly-btn" aria-label="Fly down">▼</button>
+            </div>
             <div id="action-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+            </div>
+        </div>
+
+        <div id="settings-panel" class="hidden">
+            <div class="settings-card">
+                <div class="settings-header">
+                    <h2>Settings</h2>
+                    <button id="settings-close" aria-label="Close settings">×</button>
+                </div>
+                <div class="settings-body">
+
+                    <div class="settings-row toggle-row">
+                        <span>Flight mode</span>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-flight">
+                            <span class="slider-track"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-section-label">Gravity</div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Strength</span><span class="val" id="val-gravity">-9.81</span></div>
+                        <input type="range" id="opt-gravity" min="-25" max="25" step="0.1" value="-9.81">
+                        <div class="preset-row">
+                            <button class="preset-btn" data-gravity="-9.81">Earth</button>
+                            <button class="preset-btn" data-gravity="-1.62">Moon</button>
+                            <button class="preset-btn" data-gravity="-3.71">Mars</button>
+                            <button class="preset-btn" data-gravity="0">Zero-G</button>
+                            <button class="preset-btn" data-gravity="9.81">Reverse</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section-label">Player</div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Move speed</span><span class="val" id="val-movespeed">1.0×</span></div>
+                        <input type="range" id="opt-movespeed" min="0.3" max="3" step="0.1" value="1">
+                    </div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Jump height</span><span class="val" id="val-jump">8</span></div>
+                        <input type="range" id="opt-jump" min="3" max="20" step="0.5" value="8">
+                    </div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Fly speed</span><span class="val" id="val-flyspeed">12</span></div>
+                        <input type="range" id="opt-flyspeed" min="4" max="40" step="1" value="12">
+                    </div>
+
+                    <div class="settings-section-label">Physics</div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Bounciness</span><span class="val" id="val-restitution">0.30</span></div>
+                        <input type="range" id="opt-restitution" min="0" max="1" step="0.05" value="0.3">
+                    </div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Friction</span><span class="val" id="val-friction">0.30</span></div>
+                        <input type="range" id="opt-friction" min="0" max="1" step="0.05" value="0.3">
+                    </div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Time scale</span><span class="val" id="val-timescale">1.0×</span></div>
+                        <input type="range" id="opt-timescale" min="0.1" max="2.5" step="0.05" value="1">
+                    </div>
+
+                    <div class="settings-section-label">Tools</div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Push force</span><span class="val" id="val-pushforce">1.0×</span></div>
+                        <input type="range" id="opt-pushforce" min="0.2" max="5" step="0.1" value="1">
+                    </div>
+                    <div class="settings-row">
+                        <div class="row-label"><span>Grab distance</span><span class="val" id="val-grabdist">4</span></div>
+                        <input type="range" id="opt-grabdist" min="2" max="12" step="0.5" value="4">
+                    </div>
+
+                    <button id="opt-clear-objects" class="settings-btn-full danger">Clear all objects</button>
+                    <button id="opt-reset-defaults" class="settings-btn-full">Reset to defaults</button>
+                </div>
             </div>
         </div>
 
@@ -308,8 +489,25 @@
         const velocity = new CANNON.Vec3();
 
         // Input state
-        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
         let isPointerLocked = false;
+
+        // --- GAME SETTINGS (tweakable via the settings menu) ---
+        const DEFAULT_SETTINGS = {
+            gravity: -9.81,
+            moveSpeedMult: 1,
+            jumpVel: 8,
+            flySpeed: 12,
+            restitution: 0.3,
+            friction: 0.3,
+            timeScale: 1,
+            pushForceMult: 1,
+            grabDistance: 4,
+            flight: false
+        };
+        const settings = { ...DEFAULT_SETTINGS };
+        let physicsContactMaterial = null; // set in init(), tweaked by bounciness/friction sliders
+        let flyVerticalInput = 0; // -1..1, driven by mobile fly-up/fly-down buttons
 
         // Tools
         let currentTool = 'spawn';
@@ -432,13 +630,13 @@
 
             // --- 2. Cannon.js Physics Setup ---
             world = new CANNON.World();
-            world.gravity.set(0, -9.81, 0); // Earth gravity
+            world.gravity.set(0, settings.gravity, 0);
             world.broadphase = new CANNON.SAPBroadphase(world);
 
             // Materials
             const physicsMaterial = new CANNON.Material("standard");
-            const physicsContactMaterial = new CANNON.ContactMaterial(
-                physicsMaterial, physicsMaterial, { friction: 0.3, restitution: 0.3 }
+            physicsContactMaterial = new CANNON.ContactMaterial(
+                physicsMaterial, physicsMaterial, { friction: settings.friction, restitution: settings.restitution }
             );
             world.addContactMaterial(physicsContactMaterial);
 
@@ -536,6 +734,7 @@
             // --- 5. Controls & Events ---
             setupInput();
             setupUI();
+            setupSettingsPanel();
             setToolVisuals(currentTool);
 
             if (!isMobile) {
@@ -678,11 +877,17 @@
                     case 'KeyA': keys.a = true; break;
                     case 'KeyS': keys.s = true; break;
                     case 'KeyD': keys.d = true; break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        keys.shift = true;
+                        break;
                     case 'Space':
-                        if (canJump && (isPointerLocked || isMobile)) {
-                            playerBody.velocity.y = 8;
+                        keys.space = true;
+                        if (!settings.flight && canJump && (isPointerLocked || isMobile)) {
+                            playerBody.velocity.y = settings.jumpVel;
                             canJump = false;
                         }
+                        if (isPointerLocked) e.preventDefault(); // stop space from scrolling the page
                         break;
                 }
             });
@@ -693,19 +898,21 @@
                     case 'KeyA': keys.a = false; break;
                     case 'KeyS': keys.s = false; break;
                     case 'KeyD': keys.d = false; break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        keys.shift = false;
+                        break;
+                    case 'Space': keys.space = false; break;
                 }
             });
         }
 
         function setupMobileTouch() {
             const moveZone = document.getElementById('move-zone');
-            const lookZone = document.getElementById('look-zone');
             const moveKnob = document.getElementById('move-knob');
-            const lookKnob = document.getElementById('look-knob');
             const actionBtn = document.getElementById('action-btn');
 
             let moveCenter = { x: 0, y: 0 };
-            let lookCenter = { x: 0, y: 0 };
 
             // Move Joystick
             moveZone.addEventListener('touchstart', (e) => {
@@ -752,69 +959,57 @@
                 moveInput.y = knobY / 50;
             }
 
-            // Look Joystick (Acts like dragging a mouse)
-            let lastLook = { x: 0, y: 0 };
-            lookZone.addEventListener('touchstart', (e) => {
+            // Free look - drag anywhere on screen (outside the move joystick / buttons) to look around
+            const lookLayer = document.getElementById('look-layer');
+            const lookTouches = new Map(); // identifier -> last {x, y}
+
+            lookLayer.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                const touch = e.changedTouches[0];
-                lookTouchId = touch.identifier;
-                lastLook = { x: touch.clientX, y: touch.clientY };
-
-                const rect = lookZone.getBoundingClientRect();
-                lookCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-                updateLookJoystick(touch);
-            });
-
-            lookZone.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === lookTouchId) {
-                        const touch = e.changedTouches[i];
-                        const dx = touch.clientX - lastLook.x;
-                        const dy = touch.clientY - lastLook.y;
-
-                        // Apply rotation
-                        euler.y -= dx * lookSensitivity;
-                        euler.x -= dy * lookSensitivity;
-                        euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
-                        camera.quaternion.setFromEuler(euler);
-
-                        lastLook = { x: touch.clientX, y: touch.clientY };
-                        updateLookJoystick(touch);
-                    }
+                for (const t of e.changedTouches) {
+                    lookTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
                 }
             });
+            lookLayer.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (const t of e.changedTouches) {
+                    const last = lookTouches.get(t.identifier);
+                    if (!last) continue;
+                    const dx = t.clientX - last.x;
+                    const dy = t.clientY - last.y;
 
-            const stopLook = (e) => {
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === lookTouchId) {
-                        lookTouchId = null;
-                        lookKnob.style.transform = `translate(-50%, -50%)`;
-                    }
+                    euler.y -= dx * lookSensitivity;
+                    euler.x -= dy * lookSensitivity;
+                    euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.x));
+                    camera.quaternion.setFromEuler(euler);
+
+                    lookTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
                 }
+            });
+            const stopLookTouch = (e) => {
+                for (const t of e.changedTouches) lookTouches.delete(t.identifier);
             };
-            lookZone.addEventListener('touchend', stopLook);
-            lookZone.addEventListener('touchcancel', stopLook);
-
-            function updateLookJoystick(touch) {
-                let dx = touch.clientX - lookCenter.x;
-                let dy = touch.clientY - lookCenter.y;
-                const distance = Math.min(Math.sqrt(dx * dx + dy * dy), 50);
-                const angle = Math.atan2(dy, dx);
-                const knobX = Math.cos(angle) * distance;
-                const knobY = Math.sin(angle) * distance;
-                lookKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-            }
+            lookLayer.addEventListener('touchend', stopLookTouch);
+            lookLayer.addEventListener('touchcancel', stopLookTouch);
 
             // Action Button
             actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleToolAction(true); });
             actionBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleToolAction(false); });
+
+            // Fly up/down buttons (shown only while flight mode is on)
+            const flyUpBtn = document.getElementById('fly-up-btn');
+            const flyDownBtn = document.getElementById('fly-down-btn');
+            flyUpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); flyVerticalInput = 1; });
+            flyUpBtn.addEventListener('touchend', (e) => { e.preventDefault(); flyVerticalInput = 0; });
+            flyUpBtn.addEventListener('touchcancel', () => { flyVerticalInput = 0; });
+            flyDownBtn.addEventListener('touchstart', (e) => { e.preventDefault(); flyVerticalInput = -1; });
+            flyDownBtn.addEventListener('touchend', (e) => { e.preventDefault(); flyVerticalInput = 0; });
+            flyDownBtn.addEventListener('touchcancel', () => { flyVerticalInput = 0; });
         }
 
 
         // --- TOOL UI & LOGIC ---
         function setupUI() {
-            const btns = document.querySelectorAll('.tool-btn');
+            const btns = document.querySelectorAll('.tool-btn[data-tool]');
             btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     // Stop event from propagating to canvas
@@ -837,12 +1032,170 @@
 
         function handleToolAction(isDown) {
             if (currentTool === 'grab') {
-                if (isDown) tryGrab();
-                else releaseGrab();
+                // Grab now toggles on press - no need to hold the button down.
+                if (isDown) {
+                    if (isGrabbing) releaseGrab();
+                    else tryGrab();
+                }
             } else if (isDown) {
                 // One-click tools
                 executeOneClickTool();
             }
+        }
+
+        // --- SETTINGS PANEL ---
+        function setupSettingsPanel() {
+            const panel = document.getElementById('settings-panel');
+            const settingsBtn = document.getElementById('settings-btn');
+            const closeBtn = document.getElementById('settings-close');
+            const card = panel.querySelector('.settings-card');
+
+            const openPanel = () => {
+                panel.classList.remove('hidden');
+                if (!isMobile && isPointerLocked) document.exitPointerLock();
+            };
+            const closePanel = () => panel.classList.add('hidden');
+
+            settingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openPanel();
+            });
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closePanel();
+            });
+            panel.addEventListener('click', () => closePanel()); // click on the dim backdrop closes it
+            card.addEventListener('click', (e) => e.stopPropagation()); // clicks inside the card don't close it
+            // Prevent touches on the panel leaking through to joysticks/canvas underneath
+            panel.addEventListener('touchstart', (e) => e.stopPropagation());
+            panel.addEventListener('touchmove', (e) => e.stopPropagation());
+
+            // --- Element refs ---
+            const flyControls = document.getElementById('fly-controls');
+            const els = {
+                flight: document.getElementById('opt-flight'),
+                gravity: document.getElementById('opt-gravity'),
+                movespeed: document.getElementById('opt-movespeed'),
+                jump: document.getElementById('opt-jump'),
+                flyspeed: document.getElementById('opt-flyspeed'),
+                restitution: document.getElementById('opt-restitution'),
+                friction: document.getElementById('opt-friction'),
+                timescale: document.getElementById('opt-timescale'),
+                pushforce: document.getElementById('opt-pushforce'),
+                grabdist: document.getElementById('opt-grabdist')
+            };
+            const vals = {
+                gravity: document.getElementById('val-gravity'),
+                movespeed: document.getElementById('val-movespeed'),
+                jump: document.getElementById('val-jump'),
+                flyspeed: document.getElementById('val-flyspeed'),
+                restitution: document.getElementById('val-restitution'),
+                friction: document.getElementById('val-friction'),
+                timescale: document.getElementById('val-timescale'),
+                pushforce: document.getElementById('val-pushforce'),
+                grabdist: document.getElementById('val-grabdist')
+            };
+
+            function refreshUI() {
+                els.flight.checked = settings.flight;
+                els.gravity.value = settings.gravity;
+                els.movespeed.value = settings.moveSpeedMult;
+                els.jump.value = settings.jumpVel;
+                els.flyspeed.value = settings.flySpeed;
+                els.restitution.value = settings.restitution;
+                els.friction.value = settings.friction;
+                els.timescale.value = settings.timeScale;
+                els.pushforce.value = settings.pushForceMult;
+                els.grabdist.value = settings.grabDistance;
+
+                vals.gravity.textContent = settings.gravity.toFixed(2);
+                vals.movespeed.textContent = settings.moveSpeedMult.toFixed(1) + '×';
+                vals.jump.textContent = settings.jumpVel.toFixed(1);
+                vals.flyspeed.textContent = settings.flySpeed.toFixed(0);
+                vals.restitution.textContent = settings.restitution.toFixed(2);
+                vals.friction.textContent = settings.friction.toFixed(2);
+                vals.timescale.textContent = settings.timeScale.toFixed(2) + '×';
+                vals.pushforce.textContent = settings.pushForceMult.toFixed(1) + '×';
+                vals.grabdist.textContent = settings.grabDistance.toFixed(1);
+
+                flyControls.classList.toggle('hidden', !(settings.flight && isMobile));
+            }
+
+            els.flight.addEventListener('change', () => {
+                settings.flight = els.flight.checked;
+                if (!settings.flight) flyVerticalInput = 0;
+                refreshUI();
+            });
+            els.gravity.addEventListener('input', () => {
+                settings.gravity = parseFloat(els.gravity.value);
+                world.gravity.set(0, settings.gravity, 0);
+                vals.gravity.textContent = settings.gravity.toFixed(2);
+            });
+            els.movespeed.addEventListener('input', () => {
+                settings.moveSpeedMult = parseFloat(els.movespeed.value);
+                vals.movespeed.textContent = settings.moveSpeedMult.toFixed(1) + '×';
+            });
+            els.jump.addEventListener('input', () => {
+                settings.jumpVel = parseFloat(els.jump.value);
+                vals.jump.textContent = settings.jumpVel.toFixed(1);
+            });
+            els.flyspeed.addEventListener('input', () => {
+                settings.flySpeed = parseFloat(els.flyspeed.value);
+                vals.flyspeed.textContent = settings.flySpeed.toFixed(0);
+            });
+            els.restitution.addEventListener('input', () => {
+                settings.restitution = parseFloat(els.restitution.value);
+                physicsContactMaterial.restitution = settings.restitution;
+                vals.restitution.textContent = settings.restitution.toFixed(2);
+            });
+            els.friction.addEventListener('input', () => {
+                settings.friction = parseFloat(els.friction.value);
+                physicsContactMaterial.friction = settings.friction;
+                vals.friction.textContent = settings.friction.toFixed(2);
+            });
+            els.timescale.addEventListener('input', () => {
+                settings.timeScale = parseFloat(els.timescale.value);
+                vals.timescale.textContent = settings.timeScale.toFixed(2) + '×';
+            });
+            els.pushforce.addEventListener('input', () => {
+                settings.pushForceMult = parseFloat(els.pushforce.value);
+                vals.pushforce.textContent = settings.pushForceMult.toFixed(1) + '×';
+            });
+            els.grabdist.addEventListener('input', () => {
+                settings.grabDistance = parseFloat(els.grabdist.value);
+                vals.grabdist.textContent = settings.grabDistance.toFixed(1);
+            });
+
+            document.querySelectorAll('.preset-btn[data-gravity]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    settings.gravity = parseFloat(btn.dataset.gravity);
+                    world.gravity.set(0, settings.gravity, 0);
+                    refreshUI();
+                });
+            });
+
+            document.getElementById('opt-clear-objects').addEventListener('click', (e) => {
+                e.stopPropagation();
+                for (const obj of objectsToUpdate) {
+                    scene.remove(obj.mesh);
+                    world.removeBody(obj.body);
+                }
+                objectsToUpdate.length = 0;
+                updateHudCount();
+            });
+
+            document.getElementById('opt-reset-defaults').addEventListener('click', (e) => {
+                e.stopPropagation();
+                Object.assign(settings, DEFAULT_SETTINGS);
+                world.gravity.set(0, settings.gravity, 0);
+                physicsContactMaterial.restitution = settings.restitution;
+                physicsContactMaterial.friction = settings.friction;
+                flyVerticalInput = 0;
+                refreshUI();
+            });
+
+            refreshUI();
         }
 
         function getLookingAt() {
@@ -881,7 +1234,7 @@
                         // Apply strong impulse outward from camera
                         const impulseVec = new THREE.Vector3(0, 0, -1);
                         impulseVec.applyQuaternion(camera.quaternion);
-                        impulseVec.multiplyScalar(objData.body.mass * 15); // Scale force by mass
+                        impulseVec.multiplyScalar(objData.body.mass * 15 * settings.pushForceMult); // Scale force by mass
 
                         const hitPoint = new CANNON.Vec3(hit.point.x, hit.point.y, hit.point.z);
                         objData.body.applyImpulse(new CANNON.Vec3(impulseVec.x, impulseVec.y, impulseVec.z), hitPoint);
@@ -924,7 +1277,7 @@
 
         // --- UPDATE LOOP ---
         function updatePlayerMovement(dt) {
-            const speed = 250; // Acceleration scalar
+            const speed = 250 * settings.moveSpeedMult; // Acceleration scalar
             moveVelocity.set(0, 0, 0);
 
             if (!isMobile) {
@@ -951,12 +1304,24 @@
             }
 
             // Limit horizontal velocity
-            const maxSpeed = 8;
+            const maxSpeed = 8 * settings.moveSpeedMult;
             const horizVel = new THREE.Vector2(playerBody.velocity.x, playerBody.velocity.z);
             if (horizVel.length() > maxSpeed) {
                 horizVel.normalize().multiplyScalar(maxSpeed);
                 playerBody.velocity.x = horizVel.x;
                 playerBody.velocity.z = horizVel.y;
+            }
+
+            // Flight mode - directly drive vertical velocity, overriding gravity's pull
+            if (settings.flight) {
+                let vertical = 0;
+                if (!isMobile) {
+                    if (keys.space) vertical += 1;
+                    if (keys.shift) vertical -= 1;
+                } else {
+                    vertical = flyVerticalInput;
+                }
+                playerBody.velocity.y = vertical * settings.flySpeed;
             }
 
             // Sync camera position to physics body
@@ -970,7 +1335,7 @@
         function updateGrabPosition() {
             if (isGrabbing && grabConstraint) {
                 // Keep kinematic body floating in front of camera
-                const distance = 4; // Distance to hold object
+                const distance = settings.grabDistance; // Distance to hold object
                 const targetPos = new THREE.Vector3(0, 0, -distance);
                 targetPos.applyQuaternion(camera.quaternion);
                 targetPos.add(camera.position);
@@ -992,10 +1357,10 @@
             requestAnimationFrame(animate);
 
             if (lastCallTime !== undefined) {
-                const dt = (time - lastCallTime) / 1000;
+                const dt = ((time - lastCallTime) / 1000) * settings.timeScale;
 
-                // Step physics world
-                world.step(timeStep, dt, 3);
+                // Step physics world (raise max substeps so slow-mo/fast-forward stay stable)
+                world.step(timeStep, dt, 10);
 
                 // Update player
                 updatePlayerMovement(dt);
