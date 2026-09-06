@@ -589,6 +589,7 @@
 
         // Tools
         let currentTool = 'spawn';
+        let toolBeforePanelOpen = null; // remembers the previous tool so closing the panel without picking a weapon restores it
         let raycaster = new THREE.Raycaster();
         let centerVector = new THREE.Vector2(0, 0); // Center of screen
 
@@ -604,7 +605,8 @@
             shrink: { color: '#f472b6', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v6h6M9 21v-6H3M21 3l-7 7M3 21l7-7"/></svg>' },
             grow: { color: '#4ade80', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/></svg>' },
             rocket: { color: '#ef4444', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 5 6 5 10 0 2.5-1.2 4.5-2.5 6l-1-2.5h-3L9.5 18C8.2 16.5 7 14.5 7 12c0-4 2-8 5-10Z"/><path d="M9 17c-2 .3-3 1.5-3 4 2.5 0 3.7-1 4-3M15 17c2 .3 3 1.5 3 4-2.5 0-3.7-1-4-3"/><circle cx="12" cy="10" r="1.6"/></svg>' },
-            blackhole: { color: '#9089fc', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>' }
+            blackhole: { color: '#9089fc', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>' },
+            none: { color: '#8d94a3', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>' }
         };
 
         // Grabbing state
@@ -1170,9 +1172,31 @@
         function toggleToolsPanel(forceOpen) {
             const panel = document.getElementById('tools-secondary');
             const toggleBtn = document.getElementById('tools-toggle-btn');
-            const shouldShow = forceOpen !== undefined ? forceOpen : !panel.classList.contains('visible');
+            const wasVisible = panel.classList.contains('visible');
+            const shouldShow = forceOpen !== undefined ? forceOpen : !wasVisible;
+            if (shouldShow === wasVisible) return;
+
             panel.classList.toggle('visible', shouldShow);
             toggleBtn.classList.toggle('active', shouldShow);
+
+            const btns = document.querySelectorAll('.tool-btn[data-tool]');
+
+            if (shouldShow) {
+                // Opening the panel: nothing stays equipped until a weapon is actually picked,
+                // so the action button doesn't keep firing whatever was active before.
+                toolBeforePanelOpen = currentTool;
+                currentTool = 'none';
+                btns.forEach(b => b.classList.remove('active'));
+                setToolVisuals('none');
+                releaseGrab();
+                isVortexActive = false;
+            } else if (currentTool === 'none') {
+                // Closing without picking anything: fall back to whatever was active before.
+                currentTool = toolBeforePanelOpen || 'spawn';
+                btns.forEach(b => b.classList.toggle('active', b.dataset.tool === currentTool));
+                setToolVisuals(currentTool);
+            }
+
             if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
         }
 
@@ -1184,6 +1208,7 @@
         }
 
         function handleToolAction(isDown) {
+            if (currentTool === 'none') return; // no tool equipped - open the Tools panel and pick one
             if (currentTool === 'grab') {
                 // Grab now toggles on press - no need to hold the button down.
                 if (isDown) {
