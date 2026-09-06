@@ -897,6 +897,13 @@
                 mesh = new THREE.Mesh(new THREE.SphereGeometry(size / 2, 32, 32), material);
                 shape = new CANNON.Sphere(size / 2);
                 mass = size * 5;
+            } else if (type === 'triangle') {
+                // A triangular prism - same cylinder primitive as below, just with
+                // 3 radial segments instead of 32, so both mesh and physics shape
+                // come out as a triangle-faced prism instead of a round cylinder.
+                mesh = new THREE.Mesh(new THREE.CylinderGeometry(size / 2, size / 2, size, 3), material);
+                shape = new CANNON.Cylinder(size / 2, size / 2, size, 3);
+                mass = size * 5;
             } else { // cylinder
                 mesh = new THREE.Mesh(new THREE.CylinderGeometry(size / 2, size / 2, size, 32), material);
                 shape = new CANNON.Cylinder(size / 2, size / 2, size, 32);
@@ -908,7 +915,7 @@
             scene.add(mesh);
 
             const body = new CANNON.Body({ mass, position: new CANNON.Vec3(x, y, z), material: physMaterial });
-            if (type === 'cylinder') {
+            if (type === 'cylinder' || type === 'triangle') {
                 // Rotate cylinder to match Cannon's orientation (cylinder z-axis is up in
                 // cannon-es, Three.js y-axis is up, so we add the shape with a quaternion offset).
                 const q = new CANNON.Quaternion();
@@ -926,7 +933,7 @@
         }
 
         function spawnRandomShape(x, y, z) {
-            const types = ['box', 'sphere', 'cylinder'];
+            const types = ['box', 'sphere', 'cylinder', 'triangle'];
             const type = types[Math.floor(Math.random() * types.length)];
             const color = new THREE.Color().setHSL(Math.random(), 0.65, 0.55);
 
