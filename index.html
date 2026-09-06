@@ -140,16 +140,19 @@
         }
         .tool-btn.active svg { color: var(--tc); }
 
-        /* Secondary "special tools" bar - toggled by the Tools button, appears at top-center */
+        /* Secondary "special tools" bar - toggled by the Tools button, appears just
+           above the main toolbar. Sits above #blocker (20) so its buttons stay
+           clickable once opening the panel releases pointer lock (see #settings-panel). */
         #tools-secondary {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 112px; left: 50%; transform: translateX(-50%);
             display: none; gap: 6px; pointer-events: auto; background: var(--bg-panel);
             padding: 8px; border-radius: var(--radius-lg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-soft); box-shadow: 0 10px 40px rgba(0,0,0,0.4);
             flex-wrap: wrap; justify-content: center; max-width: min(560px, calc(100vw - 24px));
+            z-index: 25;
         }
-        #tools-secondary.visible { display: flex; animation: fadeInDown 0.22s ease; }
-        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        #tools-secondary.visible { display: flex; animation: fadeInUpSecondary 0.22s ease; }
+        @keyframes fadeInUpSecondary { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
         /* Mobile Controls */
         .mobile-controls { display: none; pointer-events: auto; }
@@ -160,7 +163,7 @@
             .tool-btn { padding: 7px 9px; min-width: 58px; font-size: 10px; gap: 3px; }
             .tool-btn svg { width: 17px; height: 17px; }
             #hud { top: 14px; right: 14px; padding: 6px 12px; font-size: 12px; }
-            #tools-secondary { top: 14px; gap: 2px; padding: 6px; max-width: calc(100vw - 16px); }
+            #tools-secondary { bottom: 78px; gap: 2px; padding: 6px; max-width: calc(100vw - 16px); }
         }
 
         .joystick-zone {
@@ -964,6 +967,15 @@
                     if (document.pointerLockElement === document.body) {
                         isPointerLocked = true;
                         blocker.classList.add('hidden');
+                        // If the "more tools" popup is still open when the pointer
+                        // re-locks (e.g. the player clicked past it instead of
+                        // picking a tool), close it so it doesn't stay stuck open
+                        // over live gameplay.
+                        const toolsPanel = document.getElementById('tools-secondary');
+                        if (toolsPanel.classList.contains('visible')) {
+                            toolsPanel.classList.remove('visible');
+                            document.getElementById('tools-toggle-btn').classList.remove('active');
+                        }
                     } else {
                         isPointerLocked = false;
                         blocker.classList.remove('hidden');
@@ -1156,12 +1168,19 @@
                     releaseGrab(); // Ensure we don't hold something when switching tools
                     isVortexActive = false;
 
-                    // Focus back to game on desktop
-                    if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
+                    const secondaryPanel = document.getElementById('tools-secondary');
+                    if (secondaryPanel.classList.contains('visible')) {
+                        // Picking a tool while the "more tools" popup is open closes
+                        // it and re-locks the pointer so play resumes immediately.
+                        toggleToolsPanel(false);
+                    } else if (!isMobile && !isPointerLocked) {
+                        // Focus back to game on desktop
+                        document.body.requestPointerLock();
+                    }
                 });
             });
 
-            // "Tools" button reveals/hides the row of special tools at the top of the screen
+            // "Tools" button reveals/hides the row of special tools above the main toolbar
             const toolsToggleBtn = document.getElementById('tools-toggle-btn');
             toolsToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1190,14 +1209,22 @@
                 setToolVisuals('none');
                 releaseGrab();
                 isVortexActive = false;
-            } else if (currentTool === 'none') {
-                // Closing without picking anything: fall back to whatever was active before.
-                currentTool = toolBeforePanelOpen || 'spawn';
-                btns.forEach(b => b.classList.toggle('active', b.dataset.tool === currentTool));
-                setToolVisuals(currentTool);
-            }
 
-            if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
+                // Free the cursor so it can actually reach these buttons - same fix
+                // as the Settings panel. Leaving pointer lock engaged here was the
+                // bug: the OS cursor stayed hidden/frozen wherever it was when the
+                // panel opened, so clicks on these newly-shown buttons never landed.
+                if (!isMobile && isPointerLocked) document.exitPointerLock();
+            } else {
+                // Closing without picking anything: fall back to whatever was active before.
+                if (currentTool === 'none') {
+                    currentTool = toolBeforePanelOpen || 'spawn';
+                    btns.forEach(b => b.classList.toggle('active', b.dataset.tool === currentTool));
+                    setToolVisuals(currentTool);
+                }
+                // Re-lock so play resumes right away instead of leaving the blocker up.
+                if (!isMobile && !isPointerLocked) document.body.requestPointerLock();
+            }
         }
 
         function performJump() {
