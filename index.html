@@ -1505,6 +1505,13 @@
                 targetPos.applyQuaternion(camera.quaternion);
                 targetPos.add(camera.position);
 
+                // Aiming straight down would otherwise drag the held object's pivot
+                // (and the rest of the object with it) straight through the floor.
+                // Floor is at y=0, so keep the pivot at least a body-radius above it.
+                const bodyB = grabConstraint.bodyB;
+                const floorClearance = (bodyB.boundingRadius || 0.5);
+                if (targetPos.y < floorClearance) targetPos.y = floorClearance;
+
                 kinematicGrabBody.position.set(targetPos.x, targetPos.y, targetPos.z);
                 // Reduce velocity of grabbed object to prevent crazy swinging
                 grabConstraint.bodyB.velocity.scale(0.9, grabConstraint.bodyB.velocity);
