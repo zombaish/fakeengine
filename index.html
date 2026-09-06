@@ -2,499 +2,546 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Physics Engine Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>First Person 3D Physics Playground</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #111; touch-action: none; font-family: 'Inter', sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        canvas { display: block; }
         
+        /* Crosshair */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+            mix-blend-mode: difference;
+            display: none;
+        }
+
+        /* UI Overlay */
         #ui-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10;
-            pointer-events: none; /* Let clicks pass through to canvas by default */
+            pointer-events: none;
             display: flex;
-            flex-direction: column;
-            padding: 1rem;
-            box-sizing: border-box;
+            z-index: 20;
         }
 
-        .panel {
-            pointer-events: auto; /* Enable clicks on UI panels */
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            color: white;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: all 0.3s ease;
+        #toolbar {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .btn {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            color: white;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
+        #pause-overlay {
+            pointer-events: auto;
+            flex-grow: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-        }
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-        }
-        .btn:active {
-            transform: translateY(0);
-        }
-        .btn.active-mode {
-            background: rgba(59, 130, 246, 0.6); /* Blue tint for active state */
-            border-color: rgba(96, 165, 250, 1);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            cursor: pointer;
         }
 
-        /* Custom scrollbar for tools */
-        .tools-scroll::-webkit-scrollbar { width: 6px; }
-        .tools-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
-        .tools-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
-        
-        #crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 10px; height: 10px;
-            border: 2px solid rgba(255,255,255,0.5);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 5;
-            display: none;
-        }
+        .playing #pause-overlay { display: none; }
+        .playing #toolbar { pointer-events: none; opacity: 0.2; transition: opacity 0.3s; }
+        .playing #crosshair { display: block; }
+
     </style>
+    
+    <!-- Import Maps for Three.js and Cannon-es -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
-    <div id="crosshair"></div>
-
-    <div id="ui-layer">
-        <div class="flex justify-between items-start w-full max-w-7xl mx-auto h-full">
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="text-white font-sans">
+        
+        <!-- Tools Panel -->
+        <div id="toolbar" class="w-72 h-full flex flex-col p-6 shadow-2xl transition-all">
+            <h1 class="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Physics FP</h1>
+            <p class="text-sm text-gray-400 mb-8">Press ESC to unlock mouse & use tools.</p>
             
-            <!-- Left Panel: Tools -->
-            <div class="panel w-64 max-h-full flex flex-col gap-4 overflow-y-auto tools-scroll">
+            <div class="space-y-4 flex-grow">
+                <div class="border-b border-gray-700 pb-4 mb-4">
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Spawn Objects</h2>
+                    <button id="btn-cube" class="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg mb-2 transition flex justify-between items-center group">
+                        Spawn Cube <span class="text-xs text-gray-500 group-hover:text-white">C</span>
+                    </button>
+                    <button id="btn-sphere" class="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg mb-2 transition flex justify-between items-center group">
+                        Spawn Sphere <span class="text-xs text-gray-500 group-hover:text-white">V</span>
+                    </button>
+                    <button id="btn-random" class="w-full text-left px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-lg shadow-blue-500/20 font-medium">
+                        Spawn Random Shape
+                    </button>
+                </div>
+
                 <div>
-                    <h1 class="text-xl font-bold mb-1 tracking-tight">Physics Engine</h1>
-                    <p class="text-xs text-gray-300 mb-4 opacity-80">Interactive 3D Playground</p>
-                </div>
-                
-                <div class="space-y-2">
-                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Interaction Mode</h2>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="btn-mode-camera" class="btn active-mode text-xs" onclick="setMode('camera')">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            Camera
-                        </button>
-                        <button id="btn-mode-drag" class="btn text-xs" onclick="setMode('drag')">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path></svg>
-                            Drag
-                        </button>
-                    </div>
-                    <p class="text-[10px] text-gray-400 mt-1" id="mode-hint">Left click & drag to rotate camera.</p>
-                </div>
-
-                <hr class="border-gray-500 opacity-30 my-2">
-
-                <div class="space-y-2">
-                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Spawn Shapes</h2>
-                    <button class="btn w-full justify-start" onclick="spawnShape('box')">📦 Add Cube</button>
-                    <button class="btn w-full justify-start" onclick="spawnShape('sphere')">⚽ Add Sphere</button>
-                    <button class="btn w-full justify-start" onclick="spawnShape('cylinder')">🛢️ Add Cylinder</button>
-                    <button class="btn w-full justify-start" onclick="spawnShape('random')">🎲 Random Shape</button>
-                    <button class="btn w-full justify-start !bg-indigo-600/50 hover:!bg-indigo-600/70" onclick="spawnMany()">🌧️ Spawn Rain (x20)</button>
-                </div>
-
-                <hr class="border-gray-500 opacity-30 my-2">
-
-                <div class="space-y-2 mt-auto">
-                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Environment</h2>
-                    <button id="btn-gravity" class="btn w-full justify-between" onclick="toggleGravity()">
-                        <span>Gravity</span>
-                        <span id="gravity-status" class="text-green-400 font-bold">ON</span>
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">World Settings</h2>
+                    <button id="btn-gravity" class="w-full text-left px-4 py-3 bg-indigo-900/50 hover:bg-indigo-800 rounded-lg mb-2 border border-indigo-500/30 transition flex justify-between items-center">
+                        Gravity: <span id="gravity-status" class="text-emerald-400 font-bold">ON</span>
                     </button>
-                    <button class="btn w-full justify-center !bg-red-500/30 hover:!bg-red-500/50 !border-red-500/50" onclick="clearScene()">
-                        🗑️ Clear All
+                    <button id="btn-clear" class="w-full text-left px-4 py-3 bg-red-900/40 hover:bg-red-800 rounded-lg border border-red-500/30 transition text-red-200 mt-4">
+                        Clear All Objects
                     </button>
                 </div>
-            </div>
-
-            <!-- Right Panel: Stats (Optional, keeping it minimal) -->
-            <div class="panel hidden md:block text-right">
-                <div class="text-xs text-gray-300 uppercase tracking-wider">Objects</div>
-                <div id="obj-count" class="text-2xl font-bold font-mono">0</div>
             </div>
             
+            <div class="mt-auto pt-6 border-t border-gray-700 text-xs text-gray-500 leading-relaxed">
+                <p><strong>W A S D</strong> - Move</p>
+                <p><strong>Space</strong> - Jump</p>
+                <p><strong>Left Click</strong> - Grab & Hold Object</p>
+            </div>
+        </div>
+
+        <!-- Pause Overlay / Resume Area -->
+        <div id="pause-overlay" class="group">
+            <div class="text-center transform transition-transform group-hover:scale-105">
+                <div class="text-5xl font-black mb-4 tracking-tight drop-shadow-lg">GAME PAUSED</div>
+                <div class="text-xl text-gray-300 bg-black/50 px-6 py-3 rounded-full border border-gray-600 inline-block">
+                    Click anywhere to resume
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        // Global variables for Three.js and Cannon.js
-        let scene, camera, renderer, orbitControls;
-        let world;
-        let objects = []; // Keep track of meshes and bodies
-        
-        // Interaction variables
-        let mode = 'camera'; // 'camera' or 'drag'
-        let raycaster, mouse;
-        let dragPlane;
-        let jointBody, mouseConstraint;
-        let isDragging = false;
-        
-        // Physics materials
-        let physicsMaterial;
-        
-        // Constants
-        const GRAVITY = -9.82;
-        let isGravityOn = true;
+    <div id="crosshair"></div>
+    <div id="canvas-container"></div>
 
-        // Initialize application
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+        import * as CANNON from 'cannon-es';
+
+        // --- GLOBAL VARIABLES ---
+        let scene, camera, renderer, controls;
+        let world;
+        let meshes = [];
+        let bodies = [];
+        
+        // Player Mechanics
+        let playerBody;
+        const playerRadius = 1.5;
+        const playerMass = 50;
+        let canJump = false;
+        
+        // Grab Mechanics
+        let raycaster;
+        let grabbedBody = null;
+        let grabConstraint = null;
+        let kinematicHoldBody = null;
+        let holdDistance = 5;
+
+        // Input state
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        let gravityEnabled = true;
+
+        // Materials
+        const physicsMaterial = new CANNON.Material('standard');
+        const physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial, physicsMaterial, {
+            friction: 0.3,
+            restitution: 0.4,
+        });
+
         init();
         animate();
 
         function init() {
-            // 1. Setup Three.js Scene
+            // 1. THREE.JS SETUP
             const container = document.getElementById('canvas-container');
             
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
-            scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 15, 30);
-            camera.lookAt(0, 0, 0);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
-            orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
-            orbitControls.enableDamping = true;
-            orbitControls.dampingFactor = 0.05;
-            orbitControls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't go below ground
-
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Soft white light
+            // 2. LIGHTING
+            const ambientLight = new THREE.AmbientLight(0x404040, 2.5); // Soft white light
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-            dirLight.position.set(10, 20, 10);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+            dirLight.position.set(20, 50, 20);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
             dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.left = -20;
-            dirLight.shadow.camera.right = 20;
-            dirLight.shadow.camera.top = 20;
-            dirLight.shadow.camera.bottom = -20;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 150;
+            dirLight.shadow.camera.left = -50;
+            dirLight.shadow.camera.right = 50;
+            dirLight.shadow.camera.top = 50;
+            dirLight.shadow.camera.bottom = -50;
             scene.add(dirLight);
 
-            // Grid helper
-            const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
-            gridHelper.position.y = 0.01; // Slightly above ground to prevent z-fighting
-            scene.add(gridHelper);
-
-            // 2. Setup Cannon.js World
+            // 3. CANNON.JS SETUP (PHYSICS)
             world = new CANNON.World();
-            world.gravity.set(0, GRAVITY, 0);
-            world.broadphase = new CANNON.NaiveBroadphase();
-            world.solver.iterations = 10;
-            
-            // Physics materials setup
-            physicsMaterial = new CANNON.Material("standard");
-            const physicsContactMaterial = new CANNON.ContactMaterial(
-                physicsMaterial,
-                physicsMaterial,
-                {
-                    friction: 0.3,
-                    restitution: 0.6 // Bounciness
-                }
-            );
+            world.gravity.set(0, -15, 0); // Slightly stronger gravity for better feel
+            world.broadphase = new CANNON.SAPBroadphase(world);
             world.addContactMaterial(physicsContactMaterial);
 
-            // Ground Plane (Physics & Visual)
-            const groundShape = new CANNON.Plane();
-            const groundBody = new CANNON.Body({ mass: 0, material: physicsMaterial });
-            groundBody.addShape(groundShape);
-            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-            world.addBody(groundBody);
-
-            const groundGeo = new THREE.PlaneGeometry(200, 200);
-            const groundMat = new THREE.MeshStandardMaterial({ 
-                color: 0x111111,
-                roughness: 0.8,
-                metalness: 0.2
-            });
-            const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-            groundMesh.rotation.x = -Math.PI / 2;
-            groundMesh.receiveShadow = true;
-            scene.add(groundMesh);
-
-            // 3. Setup Interaction mechanics (Drag & Drop)
-            raycaster = new THREE.Raycaster();
-            mouse = new THREE.Vector2();
-
-            // Invisible plane for dragging objects across
-            const planeGeo = new THREE.PlaneGeometry(1000, 1000);
-            const planeMat = new THREE.MeshBasicMaterial({ visible: false });
-            dragPlane = new THREE.Mesh(planeGeo, planeMat);
-            scene.add(dragPlane);
-
-            // Kinematic body to represent the mouse position in physics world
-            jointBody = new CANNON.Body({ mass: 0 });
-            jointBody.collisionFilterGroup = 0;
-            jointBody.collisionFilterMask = 0;
-            world.addBody(jointBody);
-
-            // Event listeners
-            window.addEventListener('resize', onWindowResize);
+            // 4. ENVIRONMENT (FLOOR)
+            createFloor();
+            createWalls();
             
-            // Interaction events (mouse/touch)
-            const canvas = renderer.domElement;
-            canvas.addEventListener('pointerdown', onPointerDown);
-            canvas.addEventListener('pointermove', onPointerMove);
-            canvas.addEventListener('pointerup', onPointerUp);
-            canvas.addEventListener('pointercancel', onPointerUp);
+            // Add some initial objects
+            for(let i=0; i<10; i++) spawnRandomShape(true);
 
-            // Initial spawn
-            spawnShape('box', {x: 0, y: 5, z: 0}, 2);
-            spawnShape('sphere', {x: -2, y: 8, z: 1}, 1.5);
-            updateObjectCount();
-        }
-
-        // Function to create a random bright color
-        function getRandomColor() {
-            const hue = Math.random();
-            const saturation = 0.7 + Math.random() * 0.3; // 0.7 - 1.0
-            const lightness = 0.4 + Math.random() * 0.2;  // 0.4 - 0.6
-            return new THREE.Color().setHSL(hue, saturation, lightness);
-        }
-
-        // Main function to spawn objects
-        function spawnShape(type, position = null, size = null) {
-            if (type === 'random') {
-                const types = ['box', 'sphere', 'cylinder'];
-                type = types[Math.floor(Math.random() * types.length)];
-            }
-
-            const pos = position || {
-                x: (Math.random() - 0.5) * 10,
-                y: 10 + Math.random() * 10,
-                z: (Math.random() - 0.5) * 10
-            };
-
-            const s = size || (0.5 + Math.random() * 1.5);
-            const mass = s * 2; // Heavier if larger
-            const color = getRandomColor();
-
-            let geometry, shape;
-
-            switch(type) {
-                case 'box':
-                    geometry = new THREE.BoxGeometry(s, s, s);
-                    shape = new CANNON.Box(new CANNON.Vec3(s/2, s/2, s/2));
-                    break;
-                case 'sphere':
-                    geometry = new THREE.SphereGeometry(s/2, 32, 32);
-                    shape = new CANNON.Sphere(s/2);
-                    break;
-                case 'cylinder':
-                    geometry = new THREE.CylinderGeometry(s/2, s/2, s, 32);
-                    shape = new CANNON.Cylinder(s/2, s/2, s, 32);
-                    // Cannon.js cylinder aligns along Z axis, Three.js along Y axis. Fix rotation later.
-                    break;
-            }
-
-            // Three.js Mesh
-            const material = new THREE.MeshStandardMaterial({
-                color: color,
-                roughness: 0.3,
-                metalness: 0.1
+            // 5. PLAYER SETUP (First Person Physics)
+            const playerShape = new CANNON.Sphere(playerRadius);
+            playerBody = new CANNON.Body({
+                mass: playerMass,
+                material: physicsMaterial,
+                fixedRotation: true // Prevent player from tumbling
             });
-            const mesh = new THREE.Mesh(geometry, material);
+            playerBody.addShape(playerShape);
+            playerBody.position.set(0, 5, 10);
+            playerBody.linearDamping = 0.9; // Friction to stop sliding
+            world.addBody(playerBody);
+
+            // 6. GRAB MECHANICS SETUP
+            raycaster = new THREE.Raycaster();
+            
+            // Kinematic body used as an anchor point for grabbing objects
+            kinematicHoldBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
+            world.addBody(kinematicHoldBody);
+
+            // 7. CONTROLS (PointerLock)
+            controls = new PointerLockControls(camera, document.body);
+            
+            const pauseOverlay = document.getElementById('pause-overlay');
+            pauseOverlay.addEventListener('click', () => { controls.lock(); });
+
+            controls.addEventListener('lock', () => { document.body.classList.add('playing'); });
+            controls.addEventListener('unlock', () => { document.body.classList.remove('playing'); releaseObject(); });
+
+            // 8. EVENT LISTENERS
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+
+            // UI Buttons
+            document.getElementById('btn-cube').addEventListener('click', () => spawnCube());
+            document.getElementById('btn-sphere').addEventListener('click', () => spawnSphere());
+            document.getElementById('btn-random').addEventListener('click', () => spawnRandomShape());
+            document.getElementById('btn-clear').addEventListener('click', clearObjects);
+            document.getElementById('btn-gravity').addEventListener('click', toggleGravity);
+        }
+
+        // --- ENVIRONMENT CREATION ---
+        function createFloor() {
+            // Three.js Floor
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            
+            // Checkerboard pattern
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#1e293b'; context.fillRect(0, 0, 512, 512);
+            context.fillStyle = '#334155';
+            for(let i=0; i<8; i++) {
+                for(let j=0; j<8; j++) {
+                    if((i+j)%2 === 0) context.fillRect(i*64, j*64, 64, 64);
+                }
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(10, 10);
+
+            const floorMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8 });
+            const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+            floorMesh.rotation.x = -Math.PI / 2;
+            floorMesh.receiveShadow = true;
+            scene.add(floorMesh);
+
+            // Cannon.js Floor
+            const floorShape = new CANNON.Plane();
+            const floorBody = new CANNON.Body({ mass: 0, material: physicsMaterial });
+            floorBody.addShape(floorShape);
+            floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+            world.addBody(floorBody);
+        }
+
+        function createWalls() {
+            const wallThickness = 2;
+            const wallHeight = 20;
+            const wallSize = 100;
+            const wallColor = 0x64748b;
+
+            const positions = [
+                [0, wallHeight/2, -wallSize/2], [0, wallHeight/2, wallSize/2],
+                [-wallSize/2, wallHeight/2, 0], [wallSize/2, wallHeight/2, 0]
+            ];
+            const rotations = [0, 0, Math.PI/2, Math.PI/2];
+
+            for (let i = 0; i < 4; i++) {
+                // Three.js
+                const geo = new THREE.BoxGeometry(wallSize, wallHeight, wallThickness);
+                const mat = new THREE.MeshStandardMaterial({ color: wallColor });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(...positions[i]);
+                mesh.rotation.y = rotations[i];
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+
+                // Cannon.js
+                const shape = new CANNON.Box(new CANNON.Vec3(wallSize/2, wallHeight/2, wallThickness/2));
+                const body = new CANNON.Body({ mass: 0, material: physicsMaterial });
+                body.addShape(shape);
+                body.position.set(...positions[i]);
+                body.quaternion.setFromEuler(0, rotations[i], 0);
+                world.addBody(body);
+            }
+        }
+
+        // --- SPANWING OBJECTS ---
+        function addPhysicsObject(mesh, body) {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             scene.add(mesh);
-
-            // Cannon.js Body
-            const body = new CANNON.Body({
-                mass: mass,
-                material: physicsMaterial,
-                position: new CANNON.Vec3(pos.x, pos.y, pos.z)
-            });
-
-            // Handle Cylinder rotation mismatch between Threejs and Cannonjs
-            if (type === 'cylinder') {
-                const q = new CANNON.Quaternion();
-                q.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
-                body.addShape(shape, new CANNON.Vec3(0,0,0), q);
-            } else {
-                body.addShape(shape);
-            }
-            
-            // Add some initial random rotation
-            body.quaternion.setFromEuler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-            
             world.addBody(body);
-
-            // Link them together
+            
+            // Link them
             mesh.userData.physicsBody = body;
-            body.userData = { isInteractable: true };
-
-            objects.push({ mesh, body });
-            updateObjectCount();
+            body.userData = { mesh: mesh };
+            
+            meshes.push(mesh);
+            bodies.push(body);
         }
 
-        function spawnMany() {
-            for(let i=0; i<20; i++) {
-                setTimeout(() => {
-                    spawnShape('random');
-                }, i * 100); // Stagger spawns to prevent physics explosions
+        function getRandomColor() {
+            const colors = [0xf87171, 0x60a5fa, 0x34d399, 0xfbbf24, 0xa78bfa, 0xf472b6, 0x2dd4bf];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function getSpawnPosition(randomSpread = false) {
+            // Spawn slightly in front of the player and up
+            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            direction.y = 0;
+            direction.normalize();
+            
+            const pos = new CANNON.Vec3(
+                playerBody.position.x + direction.x * 4,
+                playerBody.position.y + 5,
+                playerBody.position.z + direction.z * 4
+            );
+
+            if (randomSpread) {
+                pos.x += (Math.random() - 0.5) * 40;
+                pos.z += (Math.random() - 0.5) * 40;
+                pos.y += Math.random() * 20 + 5;
             }
+            return pos;
         }
 
-        function clearScene() {
-            objects.forEach(obj => {
-                scene.remove(obj.mesh);
-                if (obj.mesh.geometry) obj.mesh.geometry.dispose();
-                if (obj.mesh.material) obj.mesh.material.dispose();
-                world.remove(obj.body);
-            });
-            objects = [];
-            updateObjectCount();
+        function spawnCube(randomSpread = false) {
+            const size = Math.random() * 1.5 + 0.5;
+            const geo = new THREE.BoxGeometry(size*2, size*2, size*2);
+            const mat = new THREE.MeshStandardMaterial({ color: getRandomColor(), roughness: 0.4, metalness: 0.1 });
+            const mesh = new THREE.Mesh(geo, mat);
+
+            const shape = new CANNON.Box(new CANNON.Vec3(size, size, size));
+            const body = new CANNON.Body({ mass: size * 5, material: physicsMaterial });
+            body.addShape(shape);
+            body.position.copy(getSpawnPosition(randomSpread));
+            
+            addPhysicsObject(mesh, body);
+        }
+
+        function spawnSphere(randomSpread = false) {
+            const radius = Math.random() * 1 + 0.5;
+            const geo = new THREE.SphereGeometry(radius, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: getRandomColor(), roughness: 0.2, metalness: 0.5 });
+            const mesh = new THREE.Mesh(geo, mat);
+
+            const shape = new CANNON.Sphere(radius);
+            const body = new CANNON.Body({ mass: radius * 5, material: physicsMaterial });
+            body.addShape(shape);
+            body.position.copy(getSpawnPosition(randomSpread));
+            
+            addPhysicsObject(mesh, body);
+        }
+
+        function spawnCylinder(randomSpread = false) {
+            const radius = Math.random() * 1 + 0.5;
+            const height = Math.random() * 2 + 1;
+            const geo = new THREE.CylinderGeometry(radius, radius, height, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: getRandomColor(), roughness: 0.6 });
+            const mesh = new THREE.Mesh(geo, mat);
+
+            // Cannon's Cylinder axis is Z by default, Three is Y. Need to rotate shape.
+            const shape = new CANNON.Cylinder(radius, radius, height, 16);
+            const body = new CANNON.Body({ mass: (radius * radius * height) * 3, material: physicsMaterial });
+            const q = new CANNON.Quaternion();
+            q.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2); // Align Z axis to Y axis
+            body.addShape(shape, new CANNON.Vec3(0,0,0), q);
+            body.position.copy(getSpawnPosition(randomSpread));
+            
+            addPhysicsObject(mesh, body);
+        }
+
+        function spawnRandomShape(spread = false) {
+            const rand = Math.random();
+            if(rand < 0.33) spawnCube(spread);
+            else if (rand < 0.66) spawnSphere(spread);
+            else spawnCylinder(spread);
+        }
+
+        // --- TOOLS / UI FUNCTIONS ---
+        function clearObjects() {
+            releaseObject();
+            for (let i = 0; i < meshes.length; i++) {
+                scene.remove(meshes[i]);
+                meshes[i].geometry.dispose();
+                meshes[i].material.dispose();
+                world.removeBody(bodies[i]);
+            }
+            meshes = [];
+            bodies = [];
         }
 
         function toggleGravity() {
-            isGravityOn = !isGravityOn;
-            if (isGravityOn) {
-                world.gravity.set(0, GRAVITY, 0);
-                document.getElementById('gravity-status').textContent = 'ON';
-                document.getElementById('gravity-status').className = 'text-green-400 font-bold';
-                // Wake up all bodies so they fall
-                objects.forEach(obj => obj.body.wakeUp());
-            } else {
-                world.gravity.set(0, 0, 0);
-                document.getElementById('gravity-status').textContent = 'OFF';
-                document.getElementById('gravity-status').className = 'text-red-400 font-bold';
-            }
-        }
-
-        function updateObjectCount() {
-            document.getElementById('obj-count').innerText = objects.length;
-        }
-
-        function setMode(newMode) {
-            mode = newMode;
+            gravityEnabled = !gravityEnabled;
+            world.gravity.set(0, gravityEnabled ? -15 : 0, 0);
             
-            const btnCamera = document.getElementById('btn-mode-camera');
-            const btnDrag = document.getElementById('btn-mode-drag');
-            const hint = document.getElementById('mode-hint');
+            // Wake all bodies up so they float if gravity turned off
+            bodies.forEach(b => b.wakeUp());
 
-            if (mode === 'camera') {
-                btnCamera.classList.add('active-mode');
-                btnDrag.classList.remove('active-mode');
-                orbitControls.enabled = true;
-                hint.innerText = "Left click & drag to rotate camera.";
-                document.getElementById('canvas-container').style.cursor = 'default';
-                document.getElementById('crosshair').style.display = 'none';
-            } else {
-                btnCamera.classList.remove('active-mode');
-                btnDrag.classList.add('active-mode');
-                orbitControls.enabled = false;
-                hint.innerText = "Click & drag objects to move them physically.";
-                document.getElementById('canvas-container').style.cursor = 'crosshair';
-                document.getElementById('crosshair').style.display = 'block';
+            const status = document.getElementById('gravity-status');
+            status.innerText = gravityEnabled ? "ON" : "OFF";
+            status.className = gravityEnabled ? "text-emerald-400 font-bold" : "text-red-400 font-bold";
+        }
+
+        // --- INPUT HANDLING ---
+        function onKeyDown(event) {
+            if (!controls.isLocked) return;
+            switch(event.code) {
+                case 'KeyW': keys.w = true; break;
+                case 'KeyA': keys.a = true; break;
+                case 'KeyS': keys.s = true; break;
+                case 'KeyD': keys.d = true; break;
+                case 'Space': 
+                    keys.space = true; 
+                    if (canJump) {
+                        playerBody.velocity.y = 10; 
+                        canJump = false;
+                    }
+                    break;
             }
         }
 
-        function onPointerDown(event) {
-            if (mode !== 'drag') return;
+        function onKeyUp(event) {
+            switch(event.code) {
+                case 'KeyW': keys.w = false; break;
+                case 'KeyA': keys.a = false; break;
+                case 'KeyS': keys.s = false; break;
+                case 'KeyD': keys.d = false; break;
+                case 'Space': keys.space = false; break;
+                // Quick spawn shortcuts
+                case 'KeyC': if(controls.isLocked) spawnCube(); break;
+                case 'KeyV': if(controls.isLocked) spawnSphere(); break;
+            }
+        }
 
-            // Calculate mouse position in normalized device coordinates
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        function onMouseDown(event) {
+            if (!controls.isLocked || event.button !== 0) return; // Only Left click
 
-            raycaster.setFromCamera(mouse, camera);
-
-            // Intersect against all meshes in objects array
-            const interactableMeshes = objects.map(o => o.mesh);
-            const intersects = raycaster.intersectObjects(interactableMeshes);
+            // Raycast from center of screen
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(meshes);
 
             if (intersects.length > 0) {
-                const hit = intersects[0];
-                const hitMesh = hit.object;
+                const hitMesh = intersects[0].object;
                 const hitBody = hitMesh.userData.physicsBody;
-
-                if (hitBody) {
-                    isDragging = true;
+                
+                // Don't grab extremely heavy objects or floor/walls
+                if (hitBody && hitBody.mass > 0) {
+                    grabbedBody = hitBody;
                     
-                    // Set invisible plane to face camera and sit at the depth of the hit object
-                    dragPlane.position.copy(hit.point);
-                    dragPlane.quaternion.copy(camera.quaternion);
+                    // Calculate distance to hold object
+                    holdDistance = intersects[0].distance;
+                    if (holdDistance < 3) holdDistance = 3;
+                    if (holdDistance > 10) holdDistance = 10; // Max reach
 
-                    // Wake up body if sleeping
-                    hitBody.wakeUp();
+                    // Wake it up
+                    grabbedBody.wakeUp();
 
-                    // Move joint body to hit point
-                    jointBody.position.copy(hit.point);
+                    // Create a PointToPoint constraint between kinematic hold body and grabbed body
+                    // First, position kinematic body at the exact hit point
+                    const hitPoint = intersects[0].point;
+                    kinematicHoldBody.position.set(hitPoint.x, hitPoint.y, hitPoint.z);
 
-                    // Add a constraint between the mouse joint and the body
-                    // We connect it at the exact point we clicked relative to the body's center
+                    // Add constraint
+                    // Link the exact hit point on the grabbed body to the kinematic body
                     const localPivot = new CANNON.Vec3();
-                    hitBody.pointToLocalFrame(new CANNON.Vec3(hit.point.x, hit.point.y, hit.point.z), localPivot);
-
-                    mouseConstraint = new CANNON.PointToPointConstraint(jointBody, new CANNON.Vec3(0,0,0), hitBody, localPivot);
+                    grabbedBody.pointToLocalFrame(new CANNON.Vec3(hitPoint.x, hitPoint.y, hitPoint.z), localPivot);
                     
-                    // Allow some stretch for realistic pulling feel
-                    mouseConstraint.collideConnected = false;
-                    world.addConstraint(mouseConstraint);
+                    grabConstraint = new CANNON.PointToPointConstraint(
+                        grabbedBody, localPivot, 
+                        kinematicHoldBody, new CANNON.Vec3(0,0,0)
+                    );
+                    
+                    world.addConstraint(grabConstraint);
+
+                    // Slightly reduce damping so it swings realistically but doesn't fly infinitely
+                    grabbedBody.linearDamping = 0.5;
+                    grabbedBody.angularDamping = 0.5;
                 }
             }
         }
 
-        function onPointerMove(event) {
-            if (!isDragging || mode !== 'drag') return;
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            // Intersect with invisible plane to find 3D mouse position
-            const intersects = raycaster.intersectObject(dragPlane);
-
-            if (intersects.length > 0) {
-                const hitPoint = intersects[0].point;
-                // Update the kinematic body position to follow mouse
-                jointBody.position.copy(hitPoint);
-            }
+        function onMouseUp(event) {
+            if (event.button === 0) releaseObject();
         }
 
-        function onPointerUp() {
-            if (isDragging) {
-                isDragging = false;
-                if (mouseConstraint) {
-                    world.removeConstraint(mouseConstraint);
-                    mouseConstraint = null;
+        function releaseObject() {
+            if (grabConstraint) {
+                world.removeConstraint(grabConstraint);
+                grabConstraint = null;
+                
+                if (grabbedBody) {
+                    grabbedBody.linearDamping = 0.01; // Restore normal damping
+                    grabbedBody.angularDamping = 0.01;
+                    
+                    // Add slight throw velocity based on camera direction
+                    const throwDir = new THREE.Vector3();
+                    camera.getWorldDirection(throwDir);
+                    // Add current player velocity to the object for momentum transfer
+                    const throwVelocity = throwDir.multiplyScalar(5).add(
+                        new THREE.Vector3(playerBody.velocity.x, playerBody.velocity.y, playerBody.velocity.z).multiplyScalar(0.5)
+                    );
+                    
+                    grabbedBody.velocity.x += throwVelocity.x;
+                    grabbedBody.velocity.y += throwVelocity.y;
+                    grabbedBody.velocity.z += throwVelocity.z;
                 }
+                
+                grabbedBody = null;
             }
         }
 
@@ -504,28 +551,77 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // --- UPDATE LOOP ---
+        const clock = new THREE.Clock();
+        const walkSpeed = 350;
+
         function animate() {
             requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1); // Cap delta time
 
-            // Step physics world (60fps)
-            const timeStep = 1.0 / 60.0;
-            world.step(timeStep);
+            // Physics step
+            world.step(1/60, delta, 3);
 
-            // Sync Three.js meshes with Cannon.js bodies
-            objects.forEach(obj => {
-                obj.mesh.position.copy(obj.body.position);
-                obj.mesh.quaternion.copy(obj.body.quaternion);
+            // 1. Sync Physics bodies to Three.js meshes
+            for (let i = 0; i < meshes.length; i++) {
+                meshes[i].position.copy(bodies[i].position);
+                meshes[i].quaternion.copy(bodies[i].quaternion);
+            }
+
+            // 2. Handle Player Movement
+            if (controls.isLocked) {
+                // Determine forward and right directions based on camera yaw
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                forward.y = 0; // Keep movement on XZ plane
+                forward.normalize();
                 
-                // If objects fall too far, reset them or remove them
-                if (obj.body.position.y < -50) {
-                    // Simple respawn logic instead of deleting to keep things active
-                    obj.body.position.set( (Math.random()-0.5)*20, 20, (Math.random()-0.5)*20 );
-                    obj.body.velocity.set(0,0,0);
-                    obj.body.angularVelocity.set(0,0,0);
-                }
-            });
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                right.y = 0;
+                right.normalize();
 
-            orbitControls.update();
+                const targetVelocity = new THREE.Vector3(0, 0, 0);
+                
+                if (keys.w) targetVelocity.add(forward);
+                if (keys.s) targetVelocity.sub(forward);
+                if (keys.d) targetVelocity.add(right);
+                if (keys.a) targetVelocity.sub(right);
+
+                if (targetVelocity.length() > 0) targetVelocity.normalize();
+                targetVelocity.multiplyScalar(walkSpeed * delta);
+
+                // Apply velocity, keeping existing Y velocity (for gravity/jumping)
+                playerBody.velocity.x = targetVelocity.x;
+                playerBody.velocity.z = targetVelocity.z;
+
+                // Check Grounding using Raycast down
+                const rayStart = new CANNON.Vec3(playerBody.position.x, playerBody.position.y, playerBody.position.z);
+                const rayEnd = new CANNON.Vec3(playerBody.position.x, playerBody.position.y - playerRadius - 0.2, playerBody.position.z);
+                const rayResult = new CANNON.RaycastResult();
+                world.raycastClosest(rayStart, rayEnd, { skipBackfaces: true }, rayResult);
+                
+                canJump = rayResult.hasHit;
+            }
+
+            // Sync Camera to Player physics body (at eye level)
+            camera.position.copy(playerBody.position);
+            camera.position.y += playerRadius * 0.5; // Eye height slightly above center
+
+            // 3. Handle Grabbed Object
+            if (grabbedBody && grabConstraint) {
+                // Calculate desired hold position in front of camera
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                
+                const desiredPos = camera.position.clone().add(direction.multiplyScalar(holdDistance));
+                
+                // Move the kinematic anchor body to this position smoothly
+                // We use interpolation for a slightly springy/smooth follow effect
+                kinematicHoldBody.position.x += (desiredPos.x - kinematicHoldBody.position.x) * 10 * delta;
+                kinematicHoldBody.position.y += (desiredPos.y - kinematicHoldBody.position.y) * 10 * delta;
+                kinematicHoldBody.position.z += (desiredPos.z - kinematicHoldBody.position.z) * 10 * delta;
+            }
+
+            // Render
             renderer.render(scene, camera);
         }
     </script>
