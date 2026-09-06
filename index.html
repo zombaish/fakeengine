@@ -2,68 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>First Person 3D Physics Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Physics Playground</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        canvas { display: block; }
+        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #000; touch-action: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* UI Overlay */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         
         /* Crosshair */
         #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 10px;
-            height: 10px;
-            background-color: white;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 10;
-            mix-blend-mode: difference;
-            display: none;
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7;
         }
-
-        /* UI Overlay */
-        #ui-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex;
-            z-index: 20;
+        #crosshair::before, #crosshair::after {
+            content: ''; position: absolute; background: white; box-shadow: 0 0 2px black;
         }
+        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
 
+        /* Tools Menu */
         #toolbar {
-            pointer-events: auto;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: auto; background: rgba(0,0,0,0.5);
+            padding: 10px; border-radius: 15px; backdrop-filter: blur(5px);
         }
-
-        #pause-overlay {
-            pointer-events: auto;
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(4px);
-            cursor: pointer;
+        .tool-btn {
+            background: rgba(255,255,255,0.1); color: white; border: 2px solid transparent;
+            padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;
+            transition: all 0.2s; user-select: none; -webkit-user-select: none;
         }
+        .tool-btn.active { background: rgba(59, 130, 246, 0.8); border-color: #60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+        .tool-btn:hover:not(.active) { background: rgba(255,255,255,0.2); }
 
-        .playing #pause-overlay { display: none; }
-        .playing #toolbar { pointer-events: none; opacity: 0.2; transition: opacity 0.3s; }
-        .playing #crosshair { display: block; }
+        /* Mobile Controls */
+        .mobile-controls { display: none; pointer-events: auto; }
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls { display: block; }
+            #instructions { display: none !important; }
+        }
+        
+        .joystick-zone { position: absolute; bottom: 80px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); touch-action: none; }
+        #move-zone { left: 20px; }
+        #look-zone { right: 20px; }
+        .joystick-knob { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.5); transform: translate(-50%, -50%); box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events: none; }
+        
+        #action-btn {
+            position: absolute; top: 50%; right: 20px; transform: translateY(-50%);
+            width: 70px; height: 70px; border-radius: 50%; background: rgba(239, 68, 68, 0.6);
+            border: 3px solid rgba(255,255,255,0.5); color: white; font-weight: bold;
+            display: flex; justify-content: center; align-items: center; pointer-events: auto;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-size: 14px;
+        }
+        #action-btn:active { background: rgba(239, 68, 68, 0.9); transform: translateY(-50%) scale(0.95); }
 
+        #instructions {
+            position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.6);
+            padding: 15px; border-radius: 10px; font-family: sans-serif; pointer-events: none;
+            text-shadow: 1px 1px 2px black; border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        #blocker {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; color: white; pointer-events: auto; cursor: pointer;
+        }
     </style>
-    
     <!-- Import Maps for Three.js and Cannon-es -->
     <script type="importmap">
         {
             "imports": {
                 "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
                 "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
             }
         }
@@ -71,477 +81,623 @@
 </head>
 <body>
 
-    <!-- UI Overlay -->
-    <div id="ui-layer" class="text-white font-sans">
-        
-        <!-- Tools Panel -->
-        <div id="toolbar" class="w-72 h-full flex flex-col p-6 shadow-2xl transition-all">
-            <h1 class="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Physics FP</h1>
-            <p class="text-sm text-gray-400 mb-8">Press ESC to unlock mouse & use tools.</p>
-            
-            <div class="space-y-4 flex-grow">
-                <div class="border-b border-gray-700 pb-4 mb-4">
-                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Spawn Objects</h2>
-                    <button id="btn-cube" class="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg mb-2 transition flex justify-between items-center group">
-                        Spawn Cube <span class="text-xs text-gray-500 group-hover:text-white">C</span>
-                    </button>
-                    <button id="btn-sphere" class="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg mb-2 transition flex justify-between items-center group">
-                        Spawn Sphere <span class="text-xs text-gray-500 group-hover:text-white">V</span>
-                    </button>
-                    <button id="btn-random" class="w-full text-left px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-lg shadow-blue-500/20 font-medium">
-                        Spawn Random Shape
-                    </button>
-                </div>
+    <div id="canvas-container"></div>
 
-                <div>
-                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">World Settings</h2>
-                    <button id="btn-gravity" class="w-full text-left px-4 py-3 bg-indigo-900/50 hover:bg-indigo-800 rounded-lg mb-2 border border-indigo-500/30 transition flex justify-between items-center">
-                        Gravity: <span id="gravity-status" class="text-emerald-400 font-bold">ON</span>
-                    </button>
-                    <button id="btn-clear" class="w-full text-left px-4 py-3 bg-red-900/40 hover:bg-red-800 rounded-lg border border-red-500/30 transition text-red-200 mt-4">
-                        Clear All Objects
-                    </button>
-                </div>
-            </div>
-            
-            <div class="mt-auto pt-6 border-t border-gray-700 text-xs text-gray-500 leading-relaxed">
-                <p><strong>W A S D</strong> - Move</p>
-                <p><strong>Space</strong> - Jump</p>
-                <p><strong>Left Click</strong> - Grab & Hold Object</p>
-            </div>
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <div id="crosshair"></div>
+        
+        <div id="instructions">
+            <h2 class="text-xl font-bold mb-2 text-blue-300">Physics Playground</h2>
+            <p><b>Click</b> to Play (Locks Mouse)</p>
+            <p><b>WASD</b> - Move | <b>Space</b> - Jump</p>
+            <p><b>Mouse</b> - Look Around</p>
+            <p><b>Click</b> - Use Active Tool</p>
+            <p class="text-gray-400 text-sm mt-2">Press ESC to unlock mouse</p>
         </div>
 
-        <!-- Pause Overlay / Resume Area -->
-        <div id="pause-overlay" class="group">
-            <div class="text-center transform transition-transform group-hover:scale-105">
-                <div class="text-5xl font-black mb-4 tracking-tight drop-shadow-lg">GAME PAUSED</div>
-                <div class="text-xl text-gray-300 bg-black/50 px-6 py-3 rounded-full border border-gray-600 inline-block">
-                    Click anywhere to resume
-                </div>
-            </div>
+        <div id="toolbar">
+            <button class="tool-btn active" data-tool="spawn">Spawn Shape</button>
+            <button class="tool-btn" data-tool="grab">Grab Object</button>
+            <button class="tool-btn" data-tool="push">Force Push</button>
+            <button class="tool-btn" data-tool="delete">Delete</button>
+        </div>
+
+        <!-- Mobile specific controls -->
+        <div class="mobile-controls">
+            <div id="move-zone" class="joystick-zone"><div class="joystick-knob" id="move-knob"></div></div>
+            <div id="look-zone" class="joystick-zone"><div class="joystick-knob" id="look-knob"></div></div>
+            <div id="action-btn">ACTION</div>
+        </div>
+        
+        <div id="blocker" class="hidden">
+            <h1 class="text-4xl font-bold mb-4">Click to Start</h1>
+            <p class="text-xl text-gray-300">Enter Physics Playground</p>
         </div>
     </div>
 
-    <div id="crosshair"></div>
-    <div id="canvas-container"></div>
-
     <script type="module">
         import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
         import * as CANNON from 'cannon-es';
 
         // --- GLOBAL VARIABLES ---
-        let scene, camera, renderer, controls;
-        let world;
-        let meshes = [];
-        let bodies = [];
+        let scene, camera, renderer, world;
+        let timeStep = 1 / 60;
+        let lastCallTime;
+        const objectsToUpdate = [];
         
-        // Player Mechanics
+        // Player state
         let playerBody;
-        const playerRadius = 1.5;
-        const playerMass = 50;
+        const moveVelocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        let euler = new THREE.Euler(0, 0, 0, 'YXZ');
         let canJump = false;
+        const velocity = new CANNON.Vec3();
         
-        // Grab Mechanics
-        let raycaster;
-        let grabbedBody = null;
-        let grabConstraint = null;
-        let kinematicHoldBody = null;
-        let holdDistance = 5;
-
         // Input state
         const keys = { w: false, a: false, s: false, d: false, space: false };
-        let gravityEnabled = true;
+        let isPointerLocked = false;
+        
+        // Tools
+        let currentTool = 'spawn';
+        let raycaster = new THREE.Raycaster();
+        let centerVector = new THREE.Vector2(0, 0); // Center of screen
+        
+        // Grabbing state
+        let grabConstraint = null;
+        let kinematicGrabBody = null;
+        let isGrabbing = false;
 
-        // Materials
-        const physicsMaterial = new CANNON.Material('standard');
-        const physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial, physicsMaterial, {
-            friction: 0.3,
-            restitution: 0.4,
-        });
+        // Mobile Controls State
+        let isMobile = false;
+        let moveTouchId = null, lookTouchId = null;
+        let moveInput = { x: 0, y: 0 }; // -1 to 1
+        const lookSensitivity = 0.005;
 
         init();
         animate();
 
         function init() {
-            // 1. THREE.JS SETUP
+            isMobile = window.matchMedia("(pointer: coarse)").matches || 'ontouchstart' in window;
+
+            // --- 1. Three.js Setup ---
             const container = document.getElementById('canvas-container');
-            
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB);
-            scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue
+            scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
+            
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
             container.appendChild(renderer.domElement);
 
-            // 2. LIGHTING
-            const ambientLight = new THREE.AmbientLight(0x404040, 2.5); // Soft white light
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Soft white
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-            dirLight.position.set(20, 50, 20);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+            dirLight.position.set(20, 50, -20);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
             dirLight.shadow.mapSize.height = 2048;
             dirLight.shadow.camera.near = 0.5;
             dirLight.shadow.camera.far = 150;
-            dirLight.shadow.camera.left = -50;
-            dirLight.shadow.camera.right = 50;
-            dirLight.shadow.camera.top = 50;
-            dirLight.shadow.camera.bottom = -50;
+            const d = 50;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
             scene.add(dirLight);
 
-            // 3. CANNON.JS SETUP (PHYSICS)
+            // --- 2. Cannon.js Physics Setup ---
             world = new CANNON.World();
-            world.gravity.set(0, -15, 0); // Slightly stronger gravity for better feel
+            world.gravity.set(0, -9.81, 0); // Earth gravity
             world.broadphase = new CANNON.SAPBroadphase(world);
+            
+            // Materials
+            const physicsMaterial = new CANNON.Material("standard");
+            const physicsContactMaterial = new CANNON.ContactMaterial(
+                physicsMaterial, physicsMaterial, { friction: 0.3, restitution: 0.3 }
+            );
             world.addContactMaterial(physicsContactMaterial);
-
-            // 4. ENVIRONMENT (FLOOR)
-            createFloor();
-            createWalls();
             
-            // Add some initial objects
-            for(let i=0; i<10; i++) spawnRandomShape(true);
+            // Player Physics Material (low friction so we don't stick to walls)
+            const playerPhysMaterial = new CANNON.Material("player");
+            const playerFloorContact = new CANNON.ContactMaterial(
+                playerPhysMaterial, physicsMaterial, { friction: 0.0, restitution: 0.0 }
+            );
+            world.addContactMaterial(playerFloorContact);
 
-            // 5. PLAYER SETUP (First Person Physics)
-            const playerShape = new CANNON.Sphere(playerRadius);
-            playerBody = new CANNON.Body({
-                mass: playerMass,
-                material: physicsMaterial,
-                fixedRotation: true // Prevent player from tumbling
-            });
-            playerBody.addShape(playerShape);
-            playerBody.position.set(0, 5, 10);
-            playerBody.linearDamping = 0.9; // Friction to stop sliding
-            world.addBody(playerBody);
-
-            // 6. GRAB MECHANICS SETUP
-            raycaster = new THREE.Raycaster();
+            // --- 3. Create Environment ---
+            // Floor Graphics
+            const floorGeometry = new THREE.PlaneGeometry(200, 200);
+            floorGeometry.rotateX(-Math.PI / 2);
             
-            // Kinematic body used as an anchor point for grabbing objects
-            kinematicHoldBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
-            world.addBody(kinematicHoldBody);
-
-            // 7. CONTROLS (PointerLock)
-            controls = new PointerLockControls(camera, document.body);
-            
-            const pauseOverlay = document.getElementById('pause-overlay');
-            pauseOverlay.addEventListener('click', () => { controls.lock(); });
-
-            controls.addEventListener('lock', () => { document.body.classList.add('playing'); });
-            controls.addEventListener('unlock', () => { document.body.classList.remove('playing'); releaseObject(); });
-
-            // 8. EVENT LISTENERS
-            window.addEventListener('resize', onWindowResize);
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-            document.addEventListener('mousedown', onMouseDown);
-            document.addEventListener('mouseup', onMouseUp);
-
-            // UI Buttons
-            document.getElementById('btn-cube').addEventListener('click', () => spawnCube());
-            document.getElementById('btn-sphere').addEventListener('click', () => spawnSphere());
-            document.getElementById('btn-random').addEventListener('click', () => spawnRandomShape());
-            document.getElementById('btn-clear').addEventListener('click', clearObjects);
-            document.getElementById('btn-gravity').addEventListener('click', toggleGravity);
-        }
-
-        // --- ENVIRONMENT CREATION ---
-        function createFloor() {
-            // Three.js Floor
-            const floorGeo = new THREE.PlaneGeometry(100, 100);
-            
-            // Checkerboard pattern
+            // Create a checkerboard texture procedurally
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 512;
-            const context = canvas.getContext('2d');
-            context.fillStyle = '#1e293b'; context.fillRect(0, 0, 512, 512);
-            context.fillStyle = '#334155';
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,512,512);
+            ctx.fillStyle = '#cccccc';
             for(let i=0; i<8; i++) {
                 for(let j=0; j<8; j++) {
-                    if((i+j)%2 === 0) context.fillRect(i*64, j*64, 64, 64);
+                    if ((i+j)%2 === 0) ctx.fillRect(i*64, j*64, 64, 64);
                 }
             }
             const texture = new THREE.CanvasTexture(canvas);
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
-            texture.repeat.set(10, 10);
+            texture.repeat.set(40, 40);
 
-            const floorMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8 });
-            const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-            floorMesh.rotation.x = -Math.PI / 2;
+            const floorMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, metalness: 0.1 });
+            const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
             floorMesh.receiveShadow = true;
             scene.add(floorMesh);
 
-            // Cannon.js Floor
+            // Floor Physics
             const floorShape = new CANNON.Plane();
-            const floorBody = new CANNON.Body({ mass: 0, material: physicsMaterial });
-            floorBody.addShape(floorShape);
+            const floorBody = new CANNON.Body({ mass: 0, shape: floorShape, material: physicsMaterial });
             floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
             world.addBody(floorBody);
+
+            // Add some random initial objects
+            for(let i=0; i<15; i++) {
+                spawnRandomShape(
+                    Math.random() * 20 - 10,
+                    Math.random() * 10 + 2,
+                    Math.random() * 20 - 10
+                );
+            }
+
+            // --- 4. Player Setup ---
+            const radius = 1;
+            const playerShape = new CANNON.Sphere(radius);
+            playerBody = new CANNON.Body({
+                mass: 70, // kg
+                material: playerPhysMaterial,
+                position: new CANNON.Vec3(0, 5, 10),
+                type: CANNON.Body.DYNAMIC,
+                fixedRotation: true, // Don't roll
+                linearDamping: 0.9 // High damping for snappy FPS control
+            });
+            playerBody.addShape(playerShape);
+            world.addBody(playerBody);
+
+            // Check if grounded
+            playerBody.addEventListener("collide", function(e) {
+                const contact = e.contact;
+                if(contact.ni.dot(new CANNON.Vec3(0,1,0)) > 0.5) canJump = true;
+            });
+
+            // Kinematic body for grabbing
+            kinematicGrabBody = new CANNON.Body({
+                mass: 0,
+                type: CANNON.Body.KINEMATIC,
+                position: new CANNON.Vec3(0, 0, 0)
+            });
+            world.addBody(kinematicGrabBody);
+
+            // --- 5. Controls & Events ---
+            setupInput();
+            setupUI();
+            
+            if(!isMobile) {
+                document.getElementById('blocker').classList.remove('hidden');
+            } else {
+                document.getElementById('blocker').style.display = 'none';
+            }
+
+            window.addEventListener('resize', onWindowResize);
         }
 
-        function createWalls() {
-            const wallThickness = 2;
-            const wallHeight = 20;
-            const wallSize = 100;
-            const wallColor = 0x64748b;
+        // --- RANDOM SHAPE GENERATOR ---
+        function spawnRandomShape(x, y, z) {
+            const types = ['box', 'sphere', 'cylinder'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: color, roughness: 0.4, metalness: 0.1 
+            });
 
-            const positions = [
-                [0, wallHeight/2, -wallSize/2], [0, wallHeight/2, wallSize/2],
-                [-wallSize/2, wallHeight/2, 0], [wallSize/2, wallHeight/2, 0]
-            ];
-            const rotations = [0, 0, Math.PI/2, Math.PI/2];
+            let mesh, shape, mass;
+            const size = Math.random() * 1.5 + 0.5;
 
-            for (let i = 0; i < 4; i++) {
-                // Three.js
-                const geo = new THREE.BoxGeometry(wallSize, wallHeight, wallThickness);
-                const mat = new THREE.MeshStandardMaterial({ color: wallColor });
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set(...positions[i]);
-                mesh.rotation.y = rotations[i];
+            if (type === 'box') {
+                mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), material);
+                shape = new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
+                mass = size * 5;
+            } else if (type === 'sphere') {
+                mesh = new THREE.Mesh(new THREE.SphereGeometry(size/2, 32, 32), material);
+                shape = new CANNON.Sphere(size/2);
+                mass = size * 5;
+            } else { // cylinder
+                mesh = new THREE.Mesh(new THREE.CylinderGeometry(size/2, size/2, size, 32), material);
+                shape = new CANNON.Cylinder(size/2, size/2, size, 32);
+                // Rotate cylinder to match Cannon's orientation
+                const q = new CANNON.Quaternion();
+                q.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+                const transform = new CANNON.Transform();
+                transform.quaternion.copy(q);
+                // In modern cannon-es, cylinder z-axis is up. Threejs y-axis is up.
+                // We add shape with a quaternion offset.
+                const physMaterial = world.contactmaterials[0].materials[0]; // Get default mat
+                mass = size * 5;
+                
+                const body = new CANNON.Body({ mass, position: new CANNON.Vec3(x, y, z), material: physMaterial });
+                body.addShape(shape, new CANNON.Vec3(0,0,0), q);
+                
+                mesh.castShadow = true;
                 mesh.receiveShadow = true;
                 scene.add(mesh);
-
-                // Cannon.js
-                const shape = new CANNON.Box(new CANNON.Vec3(wallSize/2, wallHeight/2, wallThickness/2));
-                const body = new CANNON.Body({ mass: 0, material: physicsMaterial });
-                body.addShape(shape);
-                body.position.set(...positions[i]);
-                body.quaternion.setFromEuler(0, rotations[i], 0);
                 world.addBody(body);
+                objectsToUpdate.push({ mesh, body });
+                return;
             }
-        }
 
-        // --- SPANWING OBJECTS ---
-        function addPhysicsObject(mesh, body) {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             scene.add(mesh);
+
+            const physMaterial = world.contactmaterials[0].materials[0];
+            const body = new CANNON.Body({ mass, shape, position: new CANNON.Vec3(x, y, z), material: physMaterial });
             world.addBody(body);
-            
-            // Link them
-            mesh.userData.physicsBody = body;
-            body.userData = { mesh: mesh };
-            
-            meshes.push(mesh);
-            bodies.push(body);
-        }
 
-        function getRandomColor() {
-            const colors = [0xf87171, 0x60a5fa, 0x34d399, 0xfbbf24, 0xa78bfa, 0xf472b6, 0x2dd4bf];
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
-
-        function getSpawnPosition(randomSpread = false) {
-            // Spawn slightly in front of the player and up
-            const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            direction.y = 0;
-            direction.normalize();
-            
-            const pos = new CANNON.Vec3(
-                playerBody.position.x + direction.x * 4,
-                playerBody.position.y + 5,
-                playerBody.position.z + direction.z * 4
-            );
-
-            if (randomSpread) {
-                pos.x += (Math.random() - 0.5) * 40;
-                pos.z += (Math.random() - 0.5) * 40;
-                pos.y += Math.random() * 20 + 5;
-            }
-            return pos;
-        }
-
-        function spawnCube(randomSpread = false) {
-            const size = Math.random() * 1.5 + 0.5;
-            const geo = new THREE.BoxGeometry(size*2, size*2, size*2);
-            const mat = new THREE.MeshStandardMaterial({ color: getRandomColor(), roughness: 0.4, metalness: 0.1 });
-            const mesh = new THREE.Mesh(geo, mat);
-
-            const shape = new CANNON.Box(new CANNON.Vec3(size, size, size));
-            const body = new CANNON.Body({ mass: size * 5, material: physicsMaterial });
-            body.addShape(shape);
-            body.position.copy(getSpawnPosition(randomSpread));
-            
-            addPhysicsObject(mesh, body);
-        }
-
-        function spawnSphere(randomSpread = false) {
-            const radius = Math.random() * 1 + 0.5;
-            const geo = new THREE.SphereGeometry(radius, 32, 32);
-            const mat = new THREE.MeshStandardMaterial({ color: getRandomColor(), roughness: 0.2, metalness: 0.5 });
-            const mesh = new THREE.Mesh(geo, mat);
-
-            const shape = new CANNON.Sphere(radius);
-            const body = new CANNON.Body({ mass: radius * 5, material: physicsMaterial });
-            body.addShape(shape);
-            body.position.copy(getSpawnPosition(randomSpread));
-            
-            addPhysicsObject(mesh, body);
-        }
-
-        function spawnCylinder(randomSpread = false) {
-            const radius = Math.random() * 1 + 0.5;
-            const height = Math.random() * 2 + 1;
-            const geo = new THREE.CylinderGeometry(radius, radius, height, 32);
-            const mat = new THREE.MeshStandardMaterial({ color: getRandomColor(), roughness: 0.6 });
-            const mesh = new THREE.Mesh(geo, mat);
-
-            // Cannon's Cylinder axis is Z by default, Three is Y. Need to rotate shape.
-            const shape = new CANNON.Cylinder(radius, radius, height, 16);
-            const body = new CANNON.Body({ mass: (radius * radius * height) * 3, material: physicsMaterial });
-            const q = new CANNON.Quaternion();
-            q.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2); // Align Z axis to Y axis
-            body.addShape(shape, new CANNON.Vec3(0,0,0), q);
-            body.position.copy(getSpawnPosition(randomSpread));
-            
-            addPhysicsObject(mesh, body);
-        }
-
-        function spawnRandomShape(spread = false) {
-            const rand = Math.random();
-            if(rand < 0.33) spawnCube(spread);
-            else if (rand < 0.66) spawnSphere(spread);
-            else spawnCylinder(spread);
-        }
-
-        // --- TOOLS / UI FUNCTIONS ---
-        function clearObjects() {
-            releaseObject();
-            for (let i = 0; i < meshes.length; i++) {
-                scene.remove(meshes[i]);
-                meshes[i].geometry.dispose();
-                meshes[i].material.dispose();
-                world.removeBody(bodies[i]);
-            }
-            meshes = [];
-            bodies = [];
-        }
-
-        function toggleGravity() {
-            gravityEnabled = !gravityEnabled;
-            world.gravity.set(0, gravityEnabled ? -15 : 0, 0);
-            
-            // Wake all bodies up so they float if gravity turned off
-            bodies.forEach(b => b.wakeUp());
-
-            const status = document.getElementById('gravity-status');
-            status.innerText = gravityEnabled ? "ON" : "OFF";
-            status.className = gravityEnabled ? "text-emerald-400 font-bold" : "text-red-400 font-bold";
+            objectsToUpdate.push({ mesh, body });
         }
 
         // --- INPUT HANDLING ---
-        function onKeyDown(event) {
-            if (!controls.isLocked) return;
-            switch(event.code) {
-                case 'KeyW': keys.w = true; break;
-                case 'KeyA': keys.a = true; break;
-                case 'KeyS': keys.s = true; break;
-                case 'KeyD': keys.d = true; break;
-                case 'Space': 
-                    keys.space = true; 
-                    if (canJump) {
-                        playerBody.velocity.y = 10; 
-                        canJump = false;
+        function setupInput() {
+            // Desktop Pointer Lock
+            if (!isMobile) {
+                const blocker = document.getElementById('blocker');
+                blocker.addEventListener('click', () => {
+                    document.body.requestPointerLock();
+                });
+
+                document.addEventListener('pointerlockchange', () => {
+                    if (document.pointerLockElement === document.body) {
+                        isPointerLocked = true;
+                        blocker.classList.add('hidden');
+                    } else {
+                        isPointerLocked = false;
+                        blocker.classList.remove('hidden');
+                        releaseGrab(); // Drop object if unlocked
                     }
-                    break;
-            }
-        }
+                });
 
-        function onKeyUp(event) {
-            switch(event.code) {
-                case 'KeyW': keys.w = false; break;
-                case 'KeyA': keys.a = false; break;
-                case 'KeyS': keys.s = false; break;
-                case 'KeyD': keys.d = false; break;
-                case 'Space': keys.space = false; break;
-                // Quick spawn shortcuts
-                case 'KeyC': if(controls.isLocked) spawnCube(); break;
-                case 'KeyV': if(controls.isLocked) spawnSphere(); break;
-            }
-        }
+                document.addEventListener('mousemove', (event) => {
+                    if (!isPointerLocked) return;
+                    euler.y -= event.movementX * 0.002;
+                    euler.x -= event.movementY * 0.002;
+                    euler.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.x)); // Clamp vertical look
+                    camera.quaternion.setFromEuler(euler);
+                });
 
-        function onMouseDown(event) {
-            if (!controls.isLocked || event.button !== 0) return; // Only Left click
-
-            // Raycast from center of screen
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects(meshes);
-
-            if (intersects.length > 0) {
-                const hitMesh = intersects[0].object;
-                const hitBody = hitMesh.userData.physicsBody;
+                document.addEventListener('mousedown', (e) => {
+                    if (!isPointerLocked || e.button !== 0) return;
+                    handleToolAction(true);
+                });
                 
-                // Don't grab extremely heavy objects or floor/walls
-                if (hitBody && hitBody.mass > 0) {
-                    grabbedBody = hitBody;
+                document.addEventListener('mouseup', (e) => {
+                    if (!isPointerLocked || e.button !== 0) return;
+                    handleToolAction(false);
+                });
+            } else {
+                // Mobile Joysticks & Touch
+                setupMobileTouch();
+            }
+
+            // Keyboard (WASD)
+            document.addEventListener('keydown', (e) => {
+                switch(e.code) {
+                    case 'KeyW': keys.w = true; break;
+                    case 'KeyA': keys.a = true; break;
+                    case 'KeyS': keys.s = true; break;
+                    case 'KeyD': keys.d = true; break;
+                    case 'Space': 
+                        if(canJump && (isPointerLocked || isMobile)) {
+                            playerBody.velocity.y = 8;
+                            canJump = false;
+                        }
+                        break;
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                switch(e.code) {
+                    case 'KeyW': keys.w = false; break;
+                    case 'KeyA': keys.a = false; break;
+                    case 'KeyS': keys.s = false; break;
+                    case 'KeyD': keys.d = false; break;
+                }
+            });
+        }
+
+        function setupMobileTouch() {
+            const moveZone = document.getElementById('move-zone');
+            const lookZone = document.getElementById('look-zone');
+            const moveKnob = document.getElementById('move-knob');
+            const lookKnob = document.getElementById('look-knob');
+            const actionBtn = document.getElementById('action-btn');
+
+            let moveCenter = { x: 0, y: 0 };
+            let lookCenter = { x: 0, y: 0 };
+
+            // Move Joystick
+            moveZone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                moveTouchId = touch.identifier;
+                const rect = moveZone.getBoundingClientRect();
+                moveCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+                updateMoveJoystick(touch);
+            });
+            moveZone.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    if(e.changedTouches[i].identifier === moveTouchId) {
+                        updateMoveJoystick(e.changedTouches[i]);
+                    }
+                }
+            });
+            const stopMove = (e) => {
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    if(e.changedTouches[i].identifier === moveTouchId) {
+                        moveTouchId = null;
+                        moveInput = { x: 0, y: 0 };
+                        moveKnob.style.transform = `translate(-50%, -50%)`;
+                    }
+                }
+            };
+            moveZone.addEventListener('touchend', stopMove);
+            moveZone.addEventListener('touchcancel', stopMove);
+
+            function updateMoveJoystick(touch) {
+                let dx = touch.clientX - moveCenter.x;
+                let dy = touch.clientY - moveCenter.y;
+                const distance = Math.min(Math.sqrt(dx*dx + dy*dy), 50); // Max radius 50
+                const angle = Math.atan2(dy, dx);
+                
+                const knobX = Math.cos(angle) * distance;
+                const knobY = Math.sin(angle) * distance;
+                
+                moveKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+                
+                // Normalize for movement logic (-1 to 1)
+                moveInput.x = knobX / 50;
+                moveInput.y = knobY / 50;
+            }
+
+            // Look Joystick (Acts like dragging a mouse)
+            let lastLook = { x: 0, y: 0 };
+            lookZone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                lookTouchId = touch.identifier;
+                lastLook = { x: touch.clientX, y: touch.clientY };
+                
+                const rect = lookZone.getBoundingClientRect();
+                lookCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+                updateLookJoystick(touch);
+            });
+            
+            lookZone.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    if(e.changedTouches[i].identifier === lookTouchId) {
+                        const touch = e.changedTouches[i];
+                        const dx = touch.clientX - lastLook.x;
+                        const dy = touch.clientY - lastLook.y;
+                        
+                        // Apply rotation
+                        euler.y -= dx * lookSensitivity;
+                        euler.x -= dy * lookSensitivity;
+                        euler.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.x));
+                        camera.quaternion.setFromEuler(euler);
+                        
+                        lastLook = { x: touch.clientX, y: touch.clientY };
+                        updateLookJoystick(touch);
+                    }
+                }
+            });
+
+            const stopLook = (e) => {
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    if(e.changedTouches[i].identifier === lookTouchId) {
+                        lookTouchId = null;
+                        lookKnob.style.transform = `translate(-50%, -50%)`;
+                    }
+                }
+            };
+            lookZone.addEventListener('touchend', stopLook);
+            lookZone.addEventListener('touchcancel', stopLook);
+
+            function updateLookJoystick(touch) {
+                 let dx = touch.clientX - lookCenter.x;
+                let dy = touch.clientY - lookCenter.y;
+                const distance = Math.min(Math.sqrt(dx*dx + dy*dy), 50); 
+                const angle = Math.atan2(dy, dx);
+                const knobX = Math.cos(angle) * distance;
+                const knobY = Math.sin(angle) * distance;
+                lookKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+            }
+
+            // Action Button
+            actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleToolAction(true); });
+            actionBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleToolAction(false); });
+        }
+
+
+        // --- TOOL UI & LOGIC ---
+        function setupUI() {
+            const btns = document.querySelectorAll('.tool-btn');
+            btns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Stop event from propagating to canvas
+                    e.stopPropagation();
                     
-                    // Calculate distance to hold object
-                    holdDistance = intersects[0].distance;
-                    if (holdDistance < 3) holdDistance = 3;
-                    if (holdDistance > 10) holdDistance = 10; // Max reach
+                    // Update UI
+                    btns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    // Set logic
+                    currentTool = btn.dataset.tool;
+                    releaseGrab(); // Ensure we don't hold something when switching tools
+                    
+                    // Focus back to game on desktop
+                    if(!isMobile && !isPointerLocked) document.body.requestPointerLock();
+                });
+            });
+        }
 
-                    // Wake it up
-                    grabbedBody.wakeUp();
+        function handleToolAction(isDown) {
+            if (currentTool === 'grab') {
+                if (isDown) tryGrab();
+                else releaseGrab();
+            } else if (isDown) {
+                // One-click tools
+                executeOneClickTool();
+            }
+        }
 
-                    // Create a PointToPoint constraint between kinematic hold body and grabbed body
-                    // First, position kinematic body at the exact hit point
-                    const hitPoint = intersects[0].point;
-                    kinematicHoldBody.position.set(hitPoint.x, hitPoint.y, hitPoint.z);
+        function getLookingAt() {
+            raycaster.setFromCamera(centerVector, camera);
+            // Intersect with scene meshes (skip floor if we don't want to interact with it, but we can just filter later)
+            const intersects = raycaster.intersectObjects(scene.children);
+            // Filter out lights and floor
+            return intersects.find(hit => hit.object.geometry && hit.object.geometry.type !== 'PlaneGeometry' && hit.distance < 20);
+        }
 
-                    // Add constraint
-                    // Link the exact hit point on the grabbed body to the kinematic body
+        function executeOneClickTool() {
+            if (currentTool === 'spawn') {
+                // Spawn 3 units in front of camera
+                const spawnPos = new THREE.Vector3(0, 0, -3);
+                spawnPos.applyQuaternion(camera.quaternion);
+                spawnPos.add(camera.position);
+                spawnRandomShape(spawnPos.x, spawnPos.y + 1, spawnPos.z);
+            } 
+            else if (currentTool === 'delete') {
+                const hit = getLookingAt();
+                if (hit) {
+                    const objData = objectsToUpdate.find(o => o.mesh === hit.object);
+                    if (objData) {
+                        scene.remove(objData.mesh);
+                        world.removeBody(objData.body);
+                        objectsToUpdate.splice(objectsToUpdate.indexOf(objData), 1);
+                    }
+                }
+            }
+            else if (currentTool === 'push') {
+                const hit = getLookingAt();
+                if (hit) {
+                    const objData = objectsToUpdate.find(o => o.mesh === hit.object);
+                    if (objData) {
+                        // Apply strong impulse outward from camera
+                        const impulseVec = new THREE.Vector3(0, 0, -1);
+                        impulseVec.applyQuaternion(camera.quaternion);
+                        impulseVec.multiplyScalar(objData.body.mass * 15); // Scale force by mass
+                        
+                        const hitPoint = new CANNON.Vec3(hit.point.x, hit.point.y, hit.point.z);
+                        objData.body.applyImpulse(new CANNON.Vec3(impulseVec.x, impulseVec.y, impulseVec.z), hitPoint);
+                    }
+                }
+            }
+        }
+
+        function tryGrab() {
+            const hit = getLookingAt();
+            if (hit) {
+                const objData = objectsToUpdate.find(o => o.mesh === hit.object);
+                if (objData) {
+                    isGrabbing = true;
+                    // Position kinematic body at hit point
+                    kinematicGrabBody.position.copy(hit.point);
+                    
+                    // Create point-to-point constraint (a spring-like feel)
+                    // We attach the kinematic body to the hit point on the dynamic body
                     const localPivot = new CANNON.Vec3();
-                    grabbedBody.pointToLocalFrame(new CANNON.Vec3(hitPoint.x, hitPoint.y, hitPoint.z), localPivot);
+                    objData.body.pointToLocalFrame(new CANNON.Vec3(hit.point.x, hit.point.y, hit.point.z), localPivot);
                     
                     grabConstraint = new CANNON.PointToPointConstraint(
-                        grabbedBody, localPivot, 
-                        kinematicHoldBody, new CANNON.Vec3(0,0,0)
+                        kinematicGrabBody, new CANNON.Vec3(0,0,0),
+                        objData.body, localPivot
                     );
                     
                     world.addConstraint(grabConstraint);
-
-                    // Slightly reduce damping so it swings realistically but doesn't fly infinitely
-                    grabbedBody.linearDamping = 0.5;
-                    grabbedBody.angularDamping = 0.5;
                 }
             }
         }
 
-        function onMouseUp(event) {
-            if (event.button === 0) releaseObject();
-        }
-
-        function releaseObject() {
-            if (grabConstraint) {
+        function releaseGrab() {
+            if (isGrabbing && grabConstraint) {
                 world.removeConstraint(grabConstraint);
                 grabConstraint = null;
+                isGrabbing = false;
+            }
+        }
+
+        // --- UPDATE LOOP ---
+        function updatePlayerMovement(dt) {
+            const speed = 250; // Acceleration scalar
+            moveVelocity.set(0, 0, 0);
+
+            if (!isMobile) {
+                if (keys.w) moveVelocity.z -= 1;
+                if (keys.s) moveVelocity.z += 1;
+                if (keys.a) moveVelocity.x -= 1;
+                if (keys.d) moveVelocity.x += 1;
+            } else {
+                // Mobile joystick input
+                moveVelocity.x = moveInput.x;
+                moveVelocity.z = moveInput.y;
+            }
+
+            moveVelocity.normalize();
+            
+            // Convert local input to world direction based on camera yaw
+            direction.copy(moveVelocity);
+            direction.applyEuler(new THREE.Euler(0, euler.y, 0, 'YXZ'));
+            
+            if (moveVelocity.lengthSq() > 0) {
+                // Apply force to physics body (ignoring Y for walk acceleration)
+                playerBody.velocity.x += direction.x * speed * dt;
+                playerBody.velocity.z += direction.z * speed * dt;
+            }
+            
+            // Limit horizontal velocity
+            const maxSpeed = 8;
+            const horizVel = new THREE.Vector2(playerBody.velocity.x, playerBody.velocity.z);
+            if (horizVel.length() > maxSpeed) {
+                horizVel.normalize().multiplyScalar(maxSpeed);
+                playerBody.velocity.x = horizVel.x;
+                playerBody.velocity.z = horizVel.y;
+            }
+
+            // Sync camera position to physics body
+            camera.position.set(
+                playerBody.position.x,
+                playerBody.position.y + 0.5, // Eye level slightly above center of sphere
+                playerBody.position.z
+            );
+        }
+
+        function updateGrabPosition() {
+            if (isGrabbing && grabConstraint) {
+                // Keep kinematic body floating in front of camera
+                const distance = 4; // Distance to hold object
+                const targetPos = new THREE.Vector3(0, 0, -distance);
+                targetPos.applyQuaternion(camera.quaternion);
+                targetPos.add(camera.position);
                 
-                if (grabbedBody) {
-                    grabbedBody.linearDamping = 0.01; // Restore normal damping
-                    grabbedBody.angularDamping = 0.01;
-                    
-                    // Add slight throw velocity based on camera direction
-                    const throwDir = new THREE.Vector3();
-                    camera.getWorldDirection(throwDir);
-                    // Add current player velocity to the object for momentum transfer
-                    const throwVelocity = throwDir.multiplyScalar(5).add(
-                        new THREE.Vector3(playerBody.velocity.x, playerBody.velocity.y, playerBody.velocity.z).multiplyScalar(0.5)
-                    );
-                    
-                    grabbedBody.velocity.x += throwVelocity.x;
-                    grabbedBody.velocity.y += throwVelocity.y;
-                    grabbedBody.velocity.z += throwVelocity.z;
-                }
-                
-                grabbedBody = null;
+                kinematicGrabBody.position.set(targetPos.x, targetPos.y, targetPos.z);
+                // Reduce velocity of grabbed object to prevent crazy swinging
+                grabConstraint.bodyB.velocity.scale(0.9, grabConstraint.bodyB.velocity);
+                grabConstraint.bodyB.angularVelocity.scale(0.9, grabConstraint.bodyB.angularVelocity);
             }
         }
 
@@ -551,77 +707,35 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- UPDATE LOOP ---
-        const clock = new THREE.Clock();
-        const walkSpeed = 350;
-
-        function animate() {
+        function animate(time) {
             requestAnimationFrame(animate);
-            const delta = Math.min(clock.getDelta(), 0.1); // Cap delta time
 
-            // Physics step
-            world.step(1/60, delta, 3);
+            if (lastCallTime !== undefined) {
+                const dt = (time - lastCallTime) / 1000;
+                
+                // Step physics world
+                world.step(timeStep, dt, 3);
+                
+                // Update player
+                updatePlayerMovement(dt);
+                
+                // Update grab tool
+                updateGrabPosition();
 
-            // 1. Sync Physics bodies to Three.js meshes
-            for (let i = 0; i < meshes.length; i++) {
-                meshes[i].position.copy(bodies[i].position);
-                meshes[i].quaternion.copy(bodies[i].quaternion);
+                // Sync Three.js meshes with Cannon.js bodies
+                for (const obj of objectsToUpdate) {
+                    obj.mesh.position.copy(obj.body.position);
+                    obj.mesh.quaternion.copy(obj.body.quaternion);
+                    
+                    // Simple boundary check to respawn fallen objects
+                    if (obj.body.position.y < -20) {
+                        obj.body.position.set(0, 20, 0);
+                        obj.body.velocity.set(0,0,0);
+                    }
+                }
             }
+            lastCallTime = time;
 
-            // 2. Handle Player Movement
-            if (controls.isLocked) {
-                // Determine forward and right directions based on camera yaw
-                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                forward.y = 0; // Keep movement on XZ plane
-                forward.normalize();
-                
-                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-                right.y = 0;
-                right.normalize();
-
-                const targetVelocity = new THREE.Vector3(0, 0, 0);
-                
-                if (keys.w) targetVelocity.add(forward);
-                if (keys.s) targetVelocity.sub(forward);
-                if (keys.d) targetVelocity.add(right);
-                if (keys.a) targetVelocity.sub(right);
-
-                if (targetVelocity.length() > 0) targetVelocity.normalize();
-                targetVelocity.multiplyScalar(walkSpeed * delta);
-
-                // Apply velocity, keeping existing Y velocity (for gravity/jumping)
-                playerBody.velocity.x = targetVelocity.x;
-                playerBody.velocity.z = targetVelocity.z;
-
-                // Check Grounding using Raycast down
-                const rayStart = new CANNON.Vec3(playerBody.position.x, playerBody.position.y, playerBody.position.z);
-                const rayEnd = new CANNON.Vec3(playerBody.position.x, playerBody.position.y - playerRadius - 0.2, playerBody.position.z);
-                const rayResult = new CANNON.RaycastResult();
-                world.raycastClosest(rayStart, rayEnd, { skipBackfaces: true }, rayResult);
-                
-                canJump = rayResult.hasHit;
-            }
-
-            // Sync Camera to Player physics body (at eye level)
-            camera.position.copy(playerBody.position);
-            camera.position.y += playerRadius * 0.5; // Eye height slightly above center
-
-            // 3. Handle Grabbed Object
-            if (grabbedBody && grabConstraint) {
-                // Calculate desired hold position in front of camera
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-                
-                const desiredPos = camera.position.clone().add(direction.multiplyScalar(holdDistance));
-                
-                // Move the kinematic anchor body to this position smoothly
-                // We use interpolation for a slightly springy/smooth follow effect
-                kinematicHoldBody.position.x += (desiredPos.x - kinematicHoldBody.position.x) * 10 * delta;
-                kinematicHoldBody.position.y += (desiredPos.y - kinematicHoldBody.position.y) * 10 * delta;
-                kinematicHoldBody.position.z += (desiredPos.z - kinematicHoldBody.position.z) * 10 * delta;
-            }
-
-            // Render
             renderer.render(scene, camera);
         }
     </script>
