@@ -351,6 +351,7 @@
             <div class="row"><kbd>space</kbd> jump</div>
             <div class="row">mouse to look around</div>
             <div class="row"><kbd>click</kbd> use active tool</div>
+            <div class="row">find the glowing pad to bounce</div>
             <div class="esc-hint">Press <kbd>ESC</kbd> to unlock mouse</div>
         </div>
 
@@ -528,6 +529,7 @@
         const settings = { ...DEFAULT_SETTINGS };
         let physicsContactMaterial = null; // set in init(), tweaked by bounciness/friction sliders
         let flyVerticalInput = 0; // -1..1, driven by mobile fly-up/fly-down buttons
+        const activeParticles = []; // burst particle systems currently animating (from the Boom tool)
 
         // Tools
         let currentTool = 'spawn';
@@ -714,6 +716,9 @@
             floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
             world.addBody(floorBody);
 
+            // Bounce Pad - a glowing trampoline you can walk (or push objects) onto for a big launch
+            createBouncePad(new THREE.Vector3(9, 0, -6));
+
             // Add some random initial objects
             for (let i = 0; i < 15; i++) {
                 spawnRandomShape(
@@ -738,10 +743,13 @@
             playerBody.addShape(playerShape);
             world.addBody(playerBody);
 
-            // Check if grounded
+            // Check if grounded - contact.ni points from body "bi" to body "bj", so its sign
+            // flips depending on which of the two colliding bodies the player happens to be.
+            // Normalize for that so ground detection (and therefore jumping) is reliable.
             playerBody.addEventListener("collide", function(e) {
                 const contact = e.contact;
-                if (contact.ni.dot(new CANNON.Vec3(0, 1, 0)) > 0.5) canJump = true;
+                const upNormal = contact.bi === playerBody ? -contact.ni.y : contact.ni.y;
+                if (upNormal > 0.5) canJump = true;
             });
 
             // Kinematic body for grabbing
@@ -780,6 +788,55 @@
         function updateHudCount() {
             const el = document.getElementById('hud-count');
             if (el) el.textContent = objectsToUpdate.length;
+        }
+
+        // --- BOUNCE PAD (interactable world object) ---
+        // A static glowing platform that launches anything landing on it - walk onto it,
+        // or push/explode objects onto it, and watch them fly.
+        const bouncePads = [];
+
+        function createBouncePad(pos) {
+            const launchVelocity = 20;
+            const padRadius = 2.4;
+            const padHeight = 0.35;
+
+            // Visual - glowing disc with an emissive pulse
+            const padMat = new THREE.MeshStandardMaterial({
+                color: 0x2dd4bf, emissive: 0x2dd4bf, emissiveIntensity: 0.9,
+                roughness: 0.3, metalness: 0.1
+            });
+            const padMesh = new THREE.Mesh(new THREE.CylinderGeometry(padRadius, padRadius, padHeight, 32), padMat);
+            padMesh.position.copy(pos);
+            padMesh.position.y += padHeight / 2;
+            padMesh.castShadow = true;
+            padMesh.receiveShadow = true;
+            scene.add(padMesh);
+
+            // Physics - static cylinder at the same spot
+            const padShape = new CANNON.Cylinder(padRadius, padRadius, padHeight, 24);
+            const q = new CANNON.Quaternion();
+            q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // match Three.js cylinder orientation
+            const padBody = new CANNON.Body({ mass: 0 });
+            padBody.addShape(padShape, new CANNON.Vec3(0, 0, 0), q);
+            padBody.position.set(pos.x, pos.y + padHeight / 2, pos.z);
+            world.addBody(padBody);
+
+            // Launch anything that lands on it with real downward speed (avoids re-triggering
+            // on bodies that are just resting there quietly).
+            padBody.addEventListener('collide', (e) => {
+                const otherBody = e.body;
+                if (!otherBody) return;
+                const impact = e.contact.getImpactVelocityAlongNormal
+                    ? e.contact.getImpactVelocityAlongNormal()
+                    : 0;
+                if (Math.abs(impact) > 2) {
+                    otherBody.velocity.y = launchVelocity;
+                    if (otherBody === playerBody) canJump = false;
+                }
+            });
+
+            // Gentle pulsing glow so the pad reads as "alive" and interactable
+            bouncePads.push({ mesh: padMesh, baseIntensity: 0.9 });
         }
 
         // --- RANDOM SHAPE GENERATOR ---
@@ -1296,6 +1353,70 @@
                         obj.body.position
                     );
                 }
+
+                spawnExplosionParticles(origin);
+            }
+        }
+
+        // --- PARTICLES (simple burst effect for the Boom tool) ---
+        function spawnExplosionParticles(origin) {
+            const count = 45;
+            const positions = new Float32Array(count * 3);
+            const velocities = [];
+
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = origin.x;
+                positions[i * 3 + 1] = origin.y;
+                positions[i * 3 + 2] = origin.z;
+
+                const dir = new THREE.Vector3(
+                    Math.random() * 2 - 1,
+                    Math.random() * 2 - 1,
+                    Math.random() * 2 - 1
+                ).normalize();
+                const speed = 3 + Math.random() * 6;
+                velocities.push(dir.multiplyScalar(speed));
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.PointsMaterial({
+                color: new THREE.Color(TOOL_META.explode.color),
+                size: 0.28,
+                transparent: true,
+                opacity: 1,
+                depthWrite: false,
+                sizeAttenuation: true
+            });
+
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+            activeParticles.push({ points, velocities, age: 0, life: 0.75 });
+        }
+
+        function updateParticles(dt) {
+            for (let i = activeParticles.length - 1; i >= 0; i--) {
+                const p = activeParticles[i];
+                p.age += dt;
+
+                const posAttr = p.points.geometry.attributes.position;
+                for (let j = 0; j < p.velocities.length; j++) {
+                    p.velocities[j].y -= 6 * dt; // gentle drag toward the ground for a nicer arc
+                    posAttr.array[j * 3] += p.velocities[j].x * dt;
+                    posAttr.array[j * 3 + 1] += p.velocities[j].y * dt;
+                    posAttr.array[j * 3 + 2] += p.velocities[j].z * dt;
+                }
+                posAttr.needsUpdate = true;
+
+                p.points.material.opacity = Math.max(0, 1 - p.age / p.life);
+
+                if (p.age >= p.life) {
+                    scene.remove(p.points);
+                    p.points.geometry.dispose();
+                    p.points.material.dispose();
+                    activeParticles.splice(i, 1);
+                }
             }
         }
 
@@ -1415,6 +1536,10 @@
             if (lastCallTime !== undefined) {
                 const dt = ((time - lastCallTime) / 1000) * settings.timeScale;
 
+                // Reset ground state each frame - the collide listener will set it back to
+                // true this step if the player is still actually touching something below them.
+                canJump = false;
+
                 // Step physics world (raise max substeps so slow-mo/fast-forward stay stable)
                 world.step(timeStep, dt, 10);
 
@@ -1434,6 +1559,14 @@
                         obj.body.position.set(0, 20, 0);
                         obj.body.velocity.set(0, 0, 0);
                     }
+                }
+
+                // Update any active particle bursts (from the Boom tool)
+                updateParticles(dt);
+
+                // Pulse the bounce pad glow so it reads as interactable
+                for (const pad of bouncePads) {
+                    pad.mesh.material.emissiveIntensity = pad.baseIntensity + Math.sin(time * 0.004) * 0.35;
                 }
             }
             lastCallTime = time;
